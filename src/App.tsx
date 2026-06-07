@@ -100,8 +100,7 @@ export default function App() {
   const [selectedSubcategory, setSelectedSubcategory] = useState('All Subcategories');
 
   // Derived admin flag — single source of truth
-  const isAdmin = user?.email === ADMIN_EMAILS;
-
+const isAdmin = !!user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
   // Auth listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
