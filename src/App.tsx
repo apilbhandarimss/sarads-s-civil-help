@@ -18,8 +18,10 @@ import {
   Trash2
 } from 'lucide-react';
 
-const ADMIN_EMAIL = 'apibhan@gmail.com';
-
+const ADMIN_EMAILS = [
+  'apibhan@gmail.com',
+  'saradbhandari146@gmail.com'
+];
 // Firestore rejects undefined field values — strip them before any write
 function stripUndefined<T extends object>(obj: T): Partial<T> {
   return Object.fromEntries(
