@@ -656,9 +656,9 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="text-center md:text-left">
             <p className="text-xs font-semibold text-slate-800">Sarad's Civil Help</p>
-            <p className="text-[10px] text-slate-400 font-mono mt-0.5">Built on Firebase Firestore</p>
+            <p className="text-[10px] text-slate-400 font-mono mt-0.5">Built on Firebase</p>
           </div>
-          <span className="text-[11px] text-slate-400">Nepali Civil Engineering Education © 2026</span>
+          <span className="text-[11px] text-slate-400">DEVNEP © 2026</span>
         </div>
       </footer>
     </div>
