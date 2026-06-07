@@ -1,0 +1,6 @@
+{
+  "name": "Sarads's Civil Help",
+  "description": "A minimal, pleasant platform for Civil Engineering study materials, Loksewa preparation, license exams, and academic resources.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

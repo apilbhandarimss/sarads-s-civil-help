@@ -1,0 +1,133 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net (default-deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Secure Admin Detection using verified token claims (Bootstrapped Admin)
+    function isAdmin() {
+      return isSignedIn() 
+        && request.auth.token.email_verified == true 
+        && request.auth.token.email == "apibhan@gmail.com";
+    }
+
+    // Schema Validation Helpers
+    function isValidNote(data) {
+      return data.keys().hasAll(['title', 'description', 'category', 'subcategory', 'authorName', 'authorEmail', 'userId', 'createdAt', 'likesCount', 'isApproved'])
+        && data.title is string && data.title.size() >= 3 && data.title.size() <= 100
+        && data.description is string && data.description.size() >= 5 && data.description.size() <= 1000
+        && data.category is string && (data.category == "loksewa" || data.category == "license" || data.category == "bachelors" || data.category == "entrance" || data.category == "masters")
+        && data.subcategory is string && data.subcategory.size() <= 100
+        && data.authorName is string && data.authorName.size() <= 100
+        && data.authorEmail is string && data.authorEmail.size() <= 100
+        && data.userId is string && (data.userId == request.auth.uid || isAdmin())
+        && data.likesCount is int
+        && data.isApproved is bool
+        && (!data.keys().hasAny(['tags']) || (data.tags is list && data.tags.size() <= 10))
+        && (!data.keys().hasAny(['content']) || (data.content is string && data.content.size() <= 10000))
+        && (!data.keys().hasAny(['pdfUrl']) || (data.pdfUrl is string && data.pdfUrl.size() <= 1000))
+        && (!data.keys().hasAny(['imageUrls']) || (data.imageUrls is list && data.imageUrls.size() <= 15));
+    }
+
+    function isValidComment(data) {
+      return data.keys().hasAll(['authorName', 'userId', 'text', 'createdAt'])
+        && data.keys().size() == 4
+        && data.authorName is string && data.authorName.size() <= 100
+        && data.userId is string && data.userId == request.auth.uid
+        && data.text is string && data.text.size() >= 1 && data.text.size() <= 500;
+    }
+
+    // Note Resource Rules
+    match /notes/{noteId} {
+      // Secure Query Enforcement: Users can view approved notes, their own pending notes, or admins can view all.
+      allow get, list: if resource.data.isApproved == true 
+        || (isSignedIn() && resource.data.userId == request.auth.uid)
+        || isAdmin();
+
+      // Create: user must be signed in, and note must start as unapproved unless created by an admin
+      allow create: if isSignedIn() 
+        && isValidId(noteId) 
+        && isValidNote(incoming())
+        && incoming().createdAt == request.time
+        && incoming().likesCount == 0
+        && (incoming().isApproved == false || isAdmin());
+
+      // Update: split into specific action clauses
+      allow update: if isSignedIn()
+        && isValidId(noteId)
+        && isValidNote(incoming())
+        && (
+          // Option A: Owner modifying note content, excluding moderation flag
+          (
+            existing().userId == request.auth.uid
+            && incoming().userId == existing().userId
+            && incoming().createdAt == existing().createdAt
+            && incoming().authorEmail == existing().authorEmail
+            && incoming().likesCount == existing().likesCount
+            && incoming().isApproved == existing().isApproved
+            && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'content', 'category', 'subcategory', 'pdfUrl', 'imageUrls', 'tags'])
+          )
+          ||
+          // Option B: Public Liking / Unliking
+          (
+            incoming().userId == existing().userId
+            && incoming().createdAt == existing().createdAt
+            && incoming().authorEmail == existing().authorEmail
+            && incoming().isApproved == existing().isApproved
+            && incoming().title == existing().title
+            && incoming().description == existing().description
+            && (!incoming().keys().hasAny(['content']) && !existing().keys().hasAny(['content']) || incoming().content == existing().content)
+            && incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'likes'])
+          )
+          ||
+          // Option C: Admin approving or modifying
+          (
+            isAdmin()
+            && incoming().userId == existing().userId
+            && incoming().createdAt == existing().createdAt
+          )
+        );
+
+      // Delete: Only the owner or an admin can delete a note
+      allow delete: if isSignedIn() 
+        && isValidId(noteId)
+        && (existing().userId == request.auth.uid || isAdmin());
+
+      // Comments subcollection
+      match /comments/{commentId} {
+        // Comments on visible notes can be read
+        allow read: if true;
+
+        // Create: commenter must be authenticated
+        allow create: if isSignedIn()
+          && isValidId(commentId)
+          && isValidComment(incoming())
+          && incoming().createdAt == request.time;
+
+        // Delete: commenter or an admin can delete
+        allow delete: if isSignedIn()
+          && isValidId(commentId)
+          && (existing().userId == request.auth.uid || isAdmin());
+      }
+    }
+  }
+}
