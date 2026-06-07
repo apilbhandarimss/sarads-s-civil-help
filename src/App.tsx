@@ -10,18 +10,15 @@ import ShareNoteModal from './components/ShareNoteModal';
 import NoteDetailsModal from './components/NoteDetailsModal';
 import {
   BookOpen,
-  Compass,
-  FileText,
+  Database,
   Filter,
-  GraduationCap,
   Plus,
   Search,
   Sparkles,
-  Award,
-  ChevronRight,
-  Database,
   Trash2
 } from 'lucide-react';
+
+const ADMIN_EMAIL = 'apibhan@gmail.com';
 
 const SEED_DATA_PACKETS = [
   {
@@ -30,7 +27,7 @@ const SEED_DATA_PACKETS = [
     category: 'loksewa' as NoteCategory,
     subcategory: 'Syllabus & Past Qs',
     content: '--- RECENT EXAM MCQS CIVIL SUB-ENGINEER ---\n\nQ1: The standard format size of A0 plotting paper in mm is?\nAns: 841 x 1189 mm\n\nQ2: The concrete mix generally used for standard reinforced concrete columns is?\nAns: M20 or rich mix\n\nQ3: In a simple vertical brick wall curve, what is the key tension check?\nAns: Compressive strength ratio must not cross critical loads.\n\nQ4: What is the primary purpose of adding gypsum during Portland cement manufacturing?\nAns: To adjust the setting time of cement (retarder).',
-    pdfUrl: 'https://www.orimi.com/pdf-test.pdf', // read-only safe pdf mock url
+    pdfUrl: 'https://www.orimi.com/pdf-test.pdf',
     imageUrls: [
       'https://images.unsplash.com/photo-1590069261209-f8e9b8642343?w=800&q=80',
       'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80'
@@ -81,23 +78,22 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
-  
-  // App UI state
+
   const [isBooting, setIsBooting] = useState(true);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
 
-  // Admin filter toggling queue
   const [adminStatusFilter, setAdminStatusFilter] = useState<'all' | 'approved' | 'pending'>('all');
 
-  // Filter queries
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<NoteCategory | 'all'>('all');
   const [selectedSubcategory, setSelectedSubcategory] = useState('All Subcategories');
-  const [isFilterTrayOpen, setIsFilterTrayOpen] = useState(false);
 
-  // Authentication Setup
+  // Derived admin flag — single source of truth
+  const isAdmin = user?.email === ADMIN_EMAIL;
+
+  // Auth listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -106,66 +102,57 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Fetch Notes Realtime from Firestore with secure query rules
+  // Firestore notes listener
   useEffect(() => {
     const notesRef = collection(db, 'notes');
-    const isAdmin = user?.email === 'apibhan@gmail.com';
 
     let unsubscribeApproved = () => {};
     let unsubscribeMyNotes = () => {};
 
     if (isAdmin) {
-      // Admins see EVERYTHING in the pool
+      // Admin sees everything
       const q = query(notesRef, orderBy('createdAt', 'desc'));
       unsubscribeApproved = onSnapshot(q, (snapshot) => {
-        const fetchedNotes: Note[] = [];
-        snapshot.forEach((doc) => {
-          fetchedNotes.push({ id: doc.id, ...doc.data() } as Note);
-        });
-        setNotes(fetchedNotes);
+        const fetched: Note[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Note));
+        setNotes(fetched);
       }, (error) => {
         handleFirestoreError(error, OperationType.GET, 'notes');
       });
     } else {
-      // Standard / Anonymous users: Load approved notes, and their own submissions if signed in
-      const qApproved = query(notesRef, where('isApproved', '==', true));
       let approvedMap: Record<string, Note> = {};
       let myNotesMap: Record<string, Note> = {};
 
-      const updateCombinedNotes = () => {
+      const merge = () => {
         const combined = { ...approvedMap, ...myNotesMap };
-        const finalArray = Object.values(combined).sort((a, b) => {
-          const timeA = a.createdAt?.seconds || (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-          const timeB = b.createdAt?.seconds || (b.createdAt ? new Date(b.createdAt).getTime() : 0);
-          return timeB - timeA;
+        const sorted = Object.values(combined).sort((a, b) => {
+          const tA = a.createdAt?.seconds ?? (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
+          const tB = b.createdAt?.seconds ?? (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
+          return tB - tA;
         });
-        setNotes(finalArray);
+        setNotes(sorted);
       };
 
+      const qApproved = query(notesRef, where('isApproved', '==', true));
       unsubscribeApproved = onSnapshot(qApproved, (snapshot) => {
         approvedMap = {};
-        snapshot.forEach((doc) => {
-          approvedMap[doc.id] = { id: doc.id, ...doc.data() } as Note;
-        });
-        updateCombinedNotes();
+        snapshot.docs.forEach(d => { approvedMap[d.id] = { id: d.id, ...d.data() } as Note; });
+        merge();
       }, (error) => {
         handleFirestoreError(error, OperationType.GET, 'notes/approved');
       });
 
       if (user?.uid) {
-        const qMyNotes = query(notesRef, where('userId', '==', user.uid));
-        unsubscribeMyNotes = onSnapshot(qMyNotes, (snapshot) => {
+        const qMine = query(notesRef, where('userId', '==', user.uid));
+        unsubscribeMyNotes = onSnapshot(qMine, (snapshot) => {
           myNotesMap = {};
-          snapshot.forEach((doc) => {
-            myNotesMap[doc.id] = { id: doc.id, ...doc.data() } as Note;
-          });
-          updateCombinedNotes();
+          snapshot.docs.forEach(d => { myNotesMap[d.id] = { id: d.id, ...d.data() } as Note; });
+          merge();
         }, (error) => {
           handleFirestoreError(error, OperationType.GET, `notes/user-${user.uid}`);
         });
       } else {
         myNotesMap = {};
-        updateCombinedNotes();
+        merge();
       }
     }
 
@@ -173,57 +160,49 @@ export default function App() {
       unsubscribeApproved();
       unsubscribeMyNotes();
     };
-  }, [user]);
+  }, [user]); // re-run when user changes (login/logout)
 
-  // Fetch comments safely inside subcollection when selectedNote is set
+  // Comments listener for selected note
   useEffect(() => {
     if (!selectedNote) {
       setComments([]);
       return;
     }
-
-    const commentsRef = collection(db, 'notes', selectedNote.id, 'comments');
-    const q = query(commentsRef, orderBy('createdAt', 'asc'));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedComments: Comment[] = [];
-      snapshot.forEach((doc) => {
-        fetchedComments.push({ id: doc.id, ...doc.data() } as Comment);
-      });
-      setComments(fetchedComments);
+    const q = query(
+      collection(db, 'notes', selectedNote.id, 'comments'),
+      orderBy('createdAt', 'asc')
+    );
+    const unsub = onSnapshot(q, (snapshot) => {
+      setComments(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Comment)));
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `notes/${selectedNote.id}/comments`);
     });
-
-    return () => unsubscribe();
+    return () => unsub();
   }, [selectedNote]);
 
-  // Handle Note Auto-seeding when Database is empty
+  // Seed DB with sample notes
   const handleAutoSeed = async () => {
     if (notes.length > 0) return;
-    
-    // Create random mock user credentials or use user info if signed in
     const defaultAuthorName = user?.displayName || 'Sarad Sapkota';
     const defaultAuthorEmail = user?.email || 'saradhelp@gmail.com';
     const defaultUserId = user?.uid || 'system_seeder_007';
-
     try {
-      const notesCol = collection(db, 'notes');
+      const col = collection(db, 'notes');
       for (const item of SEED_DATA_PACKETS) {
-        await addDoc(notesCol, {
+        await addDoc(col, {
           ...item,
           authorName: defaultAuthorName,
           authorEmail: defaultAuthorEmail,
           userId: defaultUserId,
           likesCount: 0,
           likes: {},
-          isApproved: true, // Seeded reference notes are auto-approved for a full product feel!
+          isApproved: true,
           tags: ['Reference Notes', 'Syllabus Guides'],
           createdAt: serverTimestamp()
         });
       }
     } catch (err) {
-      console.error('Failed to seed DB notes:', err);
+      console.error('Seed failed:', err);
     }
   };
 
@@ -231,7 +210,7 @@ export default function App() {
     try {
       await loginWithGoogle();
     } catch (err) {
-      console.error('Google Sign In Error:', err);
+      console.error('Login error:', err);
     }
   };
 
@@ -241,8 +220,17 @@ export default function App() {
       setIsDetailsModalOpen(false);
       setSelectedNote(null);
     } catch (err) {
-      console.error('Logout Exception:', err);
+      console.error('Logout error:', err);
     }
+  };
+
+  // FIX: Share button now correctly prompts login instead of silently blocking
+  const handleShareClick = () => {
+    if (!user) {
+      handleLogin(); // Directly trigger Google login instead of just alerting
+      return;
+    }
+    setIsShareModalOpen(true);
   };
 
   const handleShareNote = async (noteData: {
@@ -256,53 +244,43 @@ export default function App() {
     tags?: string[];
   }) => {
     if (!user) {
-      alert('You must be signed in to contribute materials!');
+      // Shouldn't reach here since handleShareClick guards it, but safety net
+      alert('Please sign in first.');
       return;
     }
 
-    const isAdminUser = user.email === 'apibhan@gmail.com';
-
-    const itemPayload = {
-      ...noteData,
-      likesCount: 0,
-      likes: {},
-      isApproved: isAdminUser, // Admin posts are auto-approved, standard posts go to pending queue
-      authorName: user.displayName || 'Contributor',
-      authorEmail: user.email || '',
-      userId: user.uid,
-      createdAt: serverTimestamp() // temporal invariant
-    };
-
     try {
-      await addDoc(collection(db, 'notes'), itemPayload);
-      if (!isAdminUser) {
-        alert('Thank you! Your civil educational material has been submitted for Moderation. It is currently under review by admin apibhan@gmail.com and will be made public once approved. You can see it marked as "Pending Review" on your personal board.');
+      await addDoc(collection(db, 'notes'), {
+        ...noteData,
+        likesCount: 0,
+        likes: {},
+        // Admin posts are auto-approved; regular users go to pending queue
+        isApproved: isAdmin,
+        authorName: user.displayName || 'Contributor',
+        authorEmail: user.email || '',
+        userId: user.uid,
+        createdAt: serverTimestamp()
+      });
+
+      if (!isAdmin) {
+        alert('Submitted! Your material is under review and will appear publicly once approved by the admin.');
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'notes');
     }
   };
 
-  // Admin Approval Method
   const handleApproveNote = async (noteId: string) => {
     try {
-      const noteRef = doc(db, 'notes', noteId);
-      await updateDoc(noteRef, {
-        isApproved: true
-      });
-      // Live update local view modal if active
-      if (selectedNote && selectedNote.id === noteId) {
-        setSelectedNote({
-          ...selectedNote,
-          isApproved: true
-        });
+      await updateDoc(doc(db, 'notes', noteId), { isApproved: true });
+      if (selectedNote?.id === noteId) {
+        setSelectedNote({ ...selectedNote, isApproved: true });
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `notes/${noteId}`);
     }
   };
 
-  // Admin Deletion Method
   const handleAdminDeleteNote = async (noteId: string) => {
     try {
       await deleteDoc(doc(db, 'notes', noteId));
@@ -313,49 +291,48 @@ export default function App() {
     }
   };
 
-  // Upvoting / Liking System
+  // FIX: Like handler — fixed optimistic local update to correctly track liked state
   const handleLikeNote = async (noteId: string, event: React.MouseEvent) => {
-    event.stopPropagation(); // prevent modal opening triggers
+    event.stopPropagation();
 
     if (!user) {
-      alert('Please Sign In with Google at the top to like materials and join discussions!');
+      alert('Sign in with Google to like materials!');
       return;
     }
 
     const note = notes.find(n => n.id === noteId);
     if (!note) return;
 
-    const likedByUser = note.likes ? !!note.likes[user.uid] : false;
+    // Safely check if user already liked — handles undefined likes map
+    const alreadyLiked = note.likes?.[user.uid] === true;
     const noteRef = doc(db, 'notes', noteId);
 
     try {
-      if (likedByUser) {
+      if (alreadyLiked) {
         await updateDoc(noteRef, {
-          likesCount: Math.max(0, note.likesCount - 1),
+          likesCount: Math.max(0, (note.likesCount ?? 0) - 1),
           [`likes.${user.uid}`]: false
         });
-        
-        // Live update local view modal if active
-        if (selectedNote && selectedNote.id === noteId) {
-          setSelectedNote({
-            ...selectedNote,
-            likesCount: Math.max(0, selectedNote.likesCount - 1),
-            likes: { ...selectedNote.likes, [user.uid]: false }
-          });
+        // Optimistic update for selectedNote modal
+        if (selectedNote?.id === noteId) {
+          setSelectedNote(prev => prev ? {
+            ...prev,
+            likesCount: Math.max(0, (prev.likesCount ?? 0) - 1),
+            likes: { ...prev.likes, [user.uid]: false }
+          } : prev);
         }
       } else {
         await updateDoc(noteRef, {
-          likesCount: note.likesCount + 1,
+          likesCount: (note.likesCount ?? 0) + 1,
           [`likes.${user.uid}`]: true
         });
-
-        // Live update local view modal if active
-        if (selectedNote && selectedNote.id === noteId) {
-          setSelectedNote({
-            ...selectedNote,
-            likesCount: selectedNote.likesCount + 1,
-            likes: { ...selectedNote.likes, [user.uid]: true }
-          });
+        // Optimistic update for selectedNote modal
+        if (selectedNote?.id === noteId) {
+          setSelectedNote(prev => prev ? {
+            ...prev,
+            likesCount: (prev.likesCount ?? 0) + 1,
+            likes: { ...prev.likes, [user.uid]: true }
+          } : prev);
         }
       }
     } catch (error) {
@@ -363,41 +340,33 @@ export default function App() {
     }
   };
 
-  // Add Comment inside subcollection
   const handleAddComment = async (commentText: string) => {
     if (!user || !selectedNote) return;
-
-    const commentPayload = {
-      authorName: user.displayName || 'Civil Aspirant',
-      userId: user.uid,
-      text: commentText,
-      createdAt: serverTimestamp() // strict temporal constraint
-    };
-
     try {
-      const commCol = collection(db, 'notes', selectedNote.id, 'comments');
-      await addDoc(commCol, commentPayload);
+      await addDoc(collection(db, 'notes', selectedNote.id, 'comments'), {
+        authorName: user.displayName || 'Civil Aspirant',
+        userId: user.uid,
+        text: commentText,
+        createdAt: serverTimestamp()
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `notes/${selectedNote.id}/comments`);
     }
   };
 
-  // Delete Comment (Owner or Admin Only)
   const handleDeleteComment = async (commentId: string) => {
     if (!selectedNote || !user) return;
     try {
-      const commDocRef = doc(db, 'notes', selectedNote.id, 'comments', commentId);
-      await deleteDoc(commDocRef);
+      await deleteDoc(doc(db, 'notes', selectedNote.id, 'comments', commentId));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `notes/${selectedNote.id}/comments/${commentId}`);
     }
   };
 
-  // Delete Note (Uploader or Admin Only)
   const handleDeleteNote = async (noteId: string, event: React.MouseEvent) => {
     event.stopPropagation();
-    if (!confirm('Are you sure you want to delete this study note permanently?')) return;
-
+    // Using window.confirm for broader compatibility
+    if (!window.confirm('Delete this note permanently?')) return;
     try {
       await deleteDoc(doc(db, 'notes', noteId));
     } catch (error) {
@@ -410,32 +379,25 @@ export default function App() {
     setIsDetailsModalOpen(true);
   };
 
-  // Dynamic filter lists
   const activeCategorySpec = selectedCategory !== 'all' ? CATEGORIES.find(c => c.id === selectedCategory) : null;
-  const activeSubcategoryList = activeCategorySpec ? activeCategorySpec.subcategories : [];
+  const activeSubcategoryList = activeCategorySpec?.subcategories ?? [];
 
-  // Filter & Search Logic with multi-tag lookup and moderation filter support
   const filteredNotes = notes.filter(note => {
-    // Admin review filter status logic
-    if (user?.email === 'apibhan@gmail.com') {
+    if (isAdmin) {
       if (adminStatusFilter === 'approved' && !note.isApproved) return false;
       if (adminStatusFilter === 'pending' && note.isApproved) return false;
     }
-
-    const isCategoryMatch = selectedCategory === 'all' || note.category === selectedCategory;
-    const isSubcategoryMatch = selectedSubcategory === 'All Subcategories' || note.subcategory === selectedSubcategory;
-    
-    // text query searches Title, Description, Subcategory, Tags, and Content text
-    const textQuery = searchQuery.toLowerCase();
-    const matchesTags = note.tags && note.tags.some(tag => tag.toLowerCase().includes(textQuery));
-    const isTextMatch = !textQuery || 
-      note.title.toLowerCase().includes(textQuery) || 
-      note.description.toLowerCase().includes(textQuery) ||
-      note.subcategory.toLowerCase().includes(textQuery) ||
-      !!matchesTags ||
-      (note.content && note.content.toLowerCase().includes(textQuery));
-
-    return isCategoryMatch && isSubcategoryMatch && isTextMatch;
+    if (selectedCategory !== 'all' && note.category !== selectedCategory) return false;
+    if (selectedSubcategory !== 'All Subcategories' && note.subcategory !== selectedSubcategory) return false;
+    const q = searchQuery.toLowerCase();
+    if (!q) return true;
+    return (
+      note.title.toLowerCase().includes(q) ||
+      note.description.toLowerCase().includes(q) ||
+      note.subcategory.toLowerCase().includes(q) ||
+      note.tags?.some(t => t.toLowerCase().includes(q)) ||
+      note.content?.toLowerCase().includes(q)
+    );
   });
 
   if (isBooting) {
@@ -444,52 +406,39 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col justify-between selection:bg-slate-900 selection:text-white">
-      
-      {/* Navbar Widget */}
+
       <Navbar
         user={user}
         onLogin={handleLogin}
         onLogout={handleLogout}
-        onShareClick={() => setIsShareModalOpen(true)}
+        onShareClick={handleShareClick}  // FIX: uses unified share handler
       />
 
-      {/* Main Core Layout Dashboard */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
-        
-        {/* Intro Portal Banner Card */}
+
+        {/* Hero Banner */}
         <div className="bg-slate-900 text-white rounded-2xl p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6 border border-slate-950 relative overflow-hidden">
           <div className="space-y-3 z-10 text-left max-w-2xl">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/10 border border-white/15 text-slate-300 text-[10px] font-bold font-mono uppercase tracking-widest">
               <Sparkles className="w-3.5 h-3.5 text-slate-100" />
               Civil Peer-to-Peer Hub
             </div>
-            <h2 className="font-display text-2xl md:text-3.5xl font-extrabold tracking-tight leading-none text-white">
-              Sarads's Civil Help
+            <h2 className="font-display text-2xl md:text-3xl font-extrabold tracking-tight leading-none text-white">
+              Sarad's Civil Help
             </h2>
-            <p className="text-sm text-slate-350 leading-relaxed max-w-xl">
-              An open, read-only educational warehouse for Civil Loksewa, Nepal licensing exams, pulchowk bachelors semester packets, and masters entrance papers. Real-time diagrams, formulas, solutions, and peer suggestions.
+            <p className="text-sm text-slate-400 leading-relaxed max-w-xl">
+              An open educational warehouse for Civil Loksewa, Nepal licensing exams, Pulchowk bachelors semester packets, and masters entrance papers.
             </p>
           </div>
-
           <div className="flex gap-3 z-10 flex-shrink-0">
-            {/* Share Notes shortcut button */}
             <button
-              id="btn-hero-share"
-              onClick={() => {
-                if (!user) {
-                  alert('Please sign in first via the Sign In button at the top!');
-                  return;
-                }
-                setIsShareModalOpen(true);
-              }}
+              onClick={handleShareClick}
               className="bg-white text-slate-900 font-bold text-xs px-4 py-2.5 rounded-lg hover:bg-slate-50 cursor-pointer shadow-sm transition-colors flex items-center gap-2"
             >
-              <Plus className="w-4 h-4 text-slate-900" />
-              Share Study Materials
+              <Plus className="w-4 h-4" />
+              {user ? 'Share Study Materials' : 'Sign In to Share'}
             </button>
           </div>
-
-          {/* Abstract Structural Grid Design Concept (replaces gradients - no useless gradients requested!) */}
           <div className="absolute inset-0 opacity-15 pointer-events-none">
             <svg className="w-full h-full text-slate-400" xmlns="http://www.w3.org/2000/svg">
               <defs>
@@ -502,18 +451,18 @@ export default function App() {
           </div>
         </div>
 
-        {/* Admin Review Dashboard Strip */}
-        {user?.email === 'apibhan@gmail.com' && (
-          <div className="bg-amber-50/80 border border-amber-200/80 p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 text-left shadow-2xs">
+        {/* Admin Console — only visible to admin email */}
+        {isAdmin && (
+          <div className="bg-amber-50/80 border border-amber-200/80 p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 text-left shadow-sm">
             <div>
               <span className="text-[10px] font-bold font-mono uppercase tracking-widest text-amber-800 bg-amber-100/80 px-2.5 py-0.5 rounded-md">
                 Admin Review Console
               </span>
-              <p className="text-sm font-semibold text-slate-800 mt-1.5 font-display">
-                You are registered as the Platform Moderator.
+              <p className="text-sm font-semibold text-slate-800 mt-1.5">
+                You are logged in as the Platform Moderator.
               </p>
-              <p className="text-xs text-slate-550 mt-0.5">
-                Manage user-contributed Loksewa and Engineering License material submissions. Only approved items are visible to peers.
+              <p className="text-xs text-slate-500 mt-0.5">
+                Only approved items are visible to regular users.
               </p>
             </div>
             <div className="flex gap-1.5 bg-white p-1.5 rounded-xl border border-slate-200 shrink-0">
@@ -527,40 +476,34 @@ export default function App() {
                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                   }`}
                 >
-                  {mode === 'all' && `All Posts (${notes.length})`}
+                  {mode === 'all' && `All (${notes.length})`}
                   {mode === 'approved' && `Approved (${notes.filter(n => n.isApproved).length})`}
-                  {mode === 'pending' && `Approval Queue (${notes.filter(n => !n.isApproved).length})`}
+                  {mode === 'pending' && `Pending (${notes.filter(n => !n.isApproved).length})`}
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Categories Horizontal Scrolling Filter Row */}
+        {/* Category Tabs */}
         <div className="space-y-3 text-left">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-slate-400 font-mono uppercase tracking-wider">
               Browse Material Pillar
             </h3>
-            {/* Small Quick Seeder trigger if DB has 0 items */}
             {notes.length === 0 && (
               <button
-                id="btn-quick-seed"
                 onClick={handleAutoSeed}
-                className="text-[10px] font-bold font-mono text-slate-500 hover:text-slate-905 flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-md transition-all cursor-pointer border border-slate-200"
+                className="text-[10px] font-bold font-mono text-slate-500 hover:text-slate-900 flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-md transition-all cursor-pointer border border-slate-200"
               >
                 <Database className="w-3.5 h-3.5" />
-                Seed Reference Notes (Pulchowk, NEC, Loksewa)
+                Seed Reference Notes
               </button>
             )}
           </div>
-          
-          <div id="category-tabs-track" className="flex overflow-x-auto gap-2 pb-1.5 scrollbar-thin">
+          <div className="flex overflow-x-auto gap-2 pb-1.5">
             <button
-              onClick={() => {
-                setSelectedCategory('all');
-                setSelectedSubcategory('All Subcategories');
-              }}
+              onClick={() => { setSelectedCategory('all'); setSelectedSubcategory('All Subcategories'); }}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer border transition-all ${
                 selectedCategory === 'all'
                   ? 'bg-slate-900 border-slate-950 text-white shadow-sm'
@@ -569,27 +512,22 @@ export default function App() {
             >
               All Categories ({notes.length})
             </button>
-            
             {CATEGORIES.map((cat) => {
-              const noteCount = notes.filter(n => n.category === cat.id).length;
+              const count = notes.filter(n => n.category === cat.id).length;
               const isSelected = selectedCategory === cat.id;
-              
               return (
                 <button
                   key={cat.id}
-                  onClick={() => {
-                    setSelectedCategory(cat.id);
-                    setSelectedSubcategory('All Subcategories');
-                  }}
+                  onClick={() => { setSelectedCategory(cat.id); setSelectedSubcategory('All Subcategories'); }}
                   className={`px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer border transition-all flex items-center gap-2 ${
                     isSelected
                       ? 'bg-slate-900 border-slate-950 text-white shadow-sm'
-                      : 'bg-white border-slate-200 text-slate-605 hover:bg-slate-50 hover:text-slate-900'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                   }`}
                 >
                   <span>{cat.label}</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${isSelected ? 'bg-white/10' : 'bg-slate-100 text-slate-500'}`}>
-                    {noteCount}
+                  <span className={`text-[10px] px-1.5 rounded-md font-mono ${isSelected ? 'bg-white/10' : 'bg-slate-100 text-slate-500'}`}>
+                    {count}
                   </span>
                 </button>
               );
@@ -597,87 +535,78 @@ export default function App() {
           </div>
         </div>
 
-        {/* Inner Search & Subcategory tag filtration */}
-        <div id="filter-bar" className="bg-white border border-slate-200/80 rounded-xl p-4 gap-4 flex flex-col md:flex-row items-center justify-between">
-          
-          {/* Real-time search query bounds */}
+        {/* Search & Subcategory Filter */}
+        <div className="bg-white border border-slate-200/80 rounded-xl p-4 gap-4 flex flex-col md:flex-row items-center justify-between">
           <div className="relative w-full md:max-w-md">
             <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400">
               <Search className="w-4 h-4" />
             </div>
             <input
               type="text"
-              placeholder={`Search in ${selectedCategory === 'all' ? 'all' : selectedCategory} notes, questions, or formulas...`}
+              placeholder={`Search ${selectedCategory === 'all' ? 'all' : selectedCategory} notes, questions, formulas...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-xs pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-slate-350"
+              className="w-full text-xs pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400"
             />
           </div>
-
-          {/* Conditional Subcategory Tags selection row */}
-          {selectedCategory !== 'all' && (
-            <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto overflow-x-auto justify-start md:justify-end">
+          {selectedCategory !== 'all' && activeSubcategoryList.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto justify-start md:justify-end">
               <span className="text-[10px] uppercase font-bold text-slate-400 font-mono flex items-center gap-1">
                 <Filter className="w-3 h-3" /> Filters:
               </span>
-              {activeSubcategoryList.map((sub) => {
-                const isSubSelected = selectedSubcategory === sub;
-                return (
-                  <button
-                    key={sub}
-                    onClick={() => setSelectedSubcategory(sub)}
-                    className={`text-[11px] px-2.5 py-1 rounded-md border font-medium cursor-pointer transition-colors ${
-                      isSubSelected
-                        ? 'bg-slate-900 border-slate-950 text-white'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-950'
-                    }`}
-                  >
-                    {sub}
-                  </button>
-                );
-              })}
+              {activeSubcategoryList.map((sub) => (
+                <button
+                  key={sub}
+                  onClick={() => setSelectedSubcategory(sub)}
+                  className={`text-[11px] px-2.5 py-1 rounded-md border font-medium cursor-pointer transition-colors ${
+                    selectedSubcategory === sub
+                      ? 'bg-slate-900 border-slate-950 text-white'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+                  }`}
+                >
+                  {sub}
+                </button>
+              ))}
             </div>
           )}
         </div>
 
-        {/* Active notes result status */}
-        <div className="text-left py-0.5 flex items-center justify-between">
+        <div className="text-left py-0.5">
           <p className="text-xs font-semibold text-slate-500 font-mono uppercase tracking-widest">
             {filteredNotes.length === 1 ? '1 Material Found' : `${filteredNotes.length} Materials Found`}
           </p>
         </div>
 
-        {/* Dashboard Notes Grid Collection */}
+        {/* Notes Grid */}
         {filteredNotes.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center max-w-lg mx-auto">
             <div className="w-12 h-12 rounded-xl bg-slate-50 text-slate-500 flex items-center justify-center mx-auto mb-4 border border-dashed border-slate-200">
               <BookOpen className="w-6 h-6" />
             </div>
-            <h4 className="font-display font-bold text-slate-800 text-base">No notes or sheets matched.</h4>
+            <h4 className="font-display font-bold text-slate-800 text-base">No notes matched.</h4>
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
-              We couldn't locate educational folders on this query. Be the first to share your civil notes or past solutions!
+              Be the first to share civil notes or past solutions!
             </p>
             {notes.length === 0 && (
               <button
                 onClick={handleAutoSeed}
-                className="mt-4 inline-flex items-center gap-2 bg-slate-905 text-white font-semibold text-xs px-4 py-2 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors shadow-sm"
+                className="mt-4 inline-flex items-center gap-2 bg-slate-900 text-white font-semibold text-xs px-4 py-2 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors shadow-sm"
               >
-                <Plus className="w-4 h-4" /> Apply Seed Civil Materials
+                <Plus className="w-4 h-4" /> Seed Sample Materials
               </button>
             )}
           </div>
         ) : (
-          <div id="notes-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
             {filteredNotes.map((note) => (
               <div key={note.id} className="relative group/wrapper">
                 <NoteCard
                   note={note}
                   onView={handleOpenNoteDetails}
-                  currentUserId={user ? user.uid : null}
+                  currentUserId={user?.uid ?? null}
                   onLike={handleLikeNote}
                 />
-                
-                {/* Delete direct overlay for Note creator */}
+                {/* Delete button for note owner */}
                 {user && note.userId === user.uid && (
                   <button
                     onClick={(e) => handleDeleteNote(note.id, e)}
@@ -691,17 +620,14 @@ export default function App() {
             ))}
           </div>
         )}
-
       </main>
 
-      {/* Sharing Flow Note Creation Window */}
       <ShareNoteModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         onShare={handleShareNote}
       />
 
-      {/* Study Materials Details document Reader Modal */}
       <NoteDetailsModal
         note={selectedNote}
         isOpen={isDetailsModalOpen}
@@ -714,25 +640,21 @@ export default function App() {
         comments={comments}
         onAddComment={handleAddComment}
         onDeleteComment={handleDeleteComment}
-        onLike={() => selectedNote && handleLikeNote(selectedNote.id, { stopPropagation: () => {} } as any)}
-        isAdmin={user?.email === 'apibhan@gmail.com'}
+        onLike={() => selectedNote && handleLikeNote(selectedNote.id, { stopPropagation: () => {} } as React.MouseEvent)}
+        isAdmin={isAdmin}
         onApproveNote={() => selectedNote && handleApproveNote(selectedNote.id)}
         onDeleteNote={() => selectedNote && handleAdminDeleteNote(selectedNote.id)}
       />
 
-      {/* Humble Footer info signature */}
       <footer className="bg-white border-t border-slate-150 py-8 w-full mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="text-center md:text-left">
-            <p className="text-xs font-semibold text-slate-850">Sarads's Civil Help</p>
-            <p className="text-[10px] text-slate-400 font-mono mt-0.5">Built securely on Cloud Run with Firestore relational maps</p>
+            <p className="text-xs font-semibold text-slate-800">Sarad's Civil Help</p>
+            <p className="text-[10px] text-slate-400 font-mono mt-0.5">Built on Firebase Firestore</p>
           </div>
-          <div className="flex gap-4">
-            <span className="text-[11px] text-slate-400">Nepali Civil Engineering Education platform © 2026</span>
-          </div>
+          <span className="text-[11px] text-slate-400">Nepali Civil Engineering Education © 2026</span>
         </div>
       </footer>
-
     </div>
   );
 }
