@@ -20,6 +20,13 @@ import {
 
 const ADMIN_EMAIL = 'apibhan@gmail.com';
 
+// Firestore rejects undefined field values — strip them before any write
+function stripUndefined<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  ) as Partial<T>;
+}
+
 const SEED_DATA_PACKETS = [
   {
     title: 'Loksewa Civil Sub-Engineer Past Solutions',
@@ -189,7 +196,7 @@ export default function App() {
     try {
       const col = collection(db, 'notes');
       for (const item of SEED_DATA_PACKETS) {
-        await addDoc(col, {
+        await addDoc(col, stripUndefined({
           ...item,
           authorName: defaultAuthorName,
           authorEmail: defaultAuthorEmail,
@@ -199,7 +206,7 @@ export default function App() {
           isApproved: true,
           tags: ['Reference Notes', 'Syllabus Guides'],
           createdAt: serverTimestamp()
-        });
+        }));
       }
     } catch (err) {
       console.error('Seed failed:', err);
@@ -250,17 +257,16 @@ export default function App() {
     }
 
     try {
-      await addDoc(collection(db, 'notes'), {
+      await addDoc(collection(db, 'notes'), stripUndefined({
         ...noteData,
         likesCount: 0,
         likes: {},
-        // Admin posts are auto-approved; regular users go to pending queue
         isApproved: isAdmin,
         authorName: user.displayName || 'Contributor',
         authorEmail: user.email || '',
         userId: user.uid,
         createdAt: serverTimestamp()
-      });
+      }));
 
       if (!isAdmin) {
         alert('Submitted! Your material is under review and will appear publicly once approved by the admin.');
