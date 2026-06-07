@@ -15,8 +15,9 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+
 // CRITICAL: We pass the explicit custom firestoreDatabaseId from the environment variables
-firestoreDatabaseId: (import.meta.env.VITE_FIREBASE_FIRESTORE_DB_ID || '(default)') as string
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId === '(default)' ? undefined : firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
