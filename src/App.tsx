@@ -264,17 +264,13 @@ export default function App() {
 
     const itemPayload = {
       ...noteData,
-      pdfUrl: noteData.pdfUrl || '', // ✅ DEFAULT TO EMPTY STRING
-      imageUrls: noteData.imageUrls || [], // ✅ DEFAULT TO EMPTY ARRAY
-      content: noteData.content || '', // ✅ DEFAULT TO EMPTY STRING
-      tags: noteData.tags || [], // ✅ DEFAULT TO EMPTY ARRAY
       likesCount: 0,
       likes: {},
-      isApproved: isAdminUser,
+      isApproved: isAdminUser, // Admin posts are auto-approved, standard posts go to pending queue
       authorName: user.displayName || 'Contributor',
       authorEmail: user.email || '',
       userId: user.uid,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp() // temporal invariant
     };
 
     try {
@@ -284,6 +280,86 @@ export default function App() {
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'notes');
+    }
+  };
+
+  // Admin Approval Method
+  const handleApproveNote = async (noteId: string) => {
+    try {
+      const noteRef = doc(db, 'notes', noteId);
+      await updateDoc(noteRef, {
+        isApproved: true
+      });
+      // Live update local view modal if active
+      if (selectedNote && selectedNote.id === noteId) {
+        setSelectedNote({
+          ...selectedNote,
+          isApproved: true
+        });
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `notes/${noteId}`);
+    }
+  };
+
+  // Admin Deletion Method
+  const handleAdminDeleteNote = async (noteId: string) => {
+    try {
+      await deleteDoc(doc(db, 'notes', noteId));
+      setIsDetailsModalOpen(false);
+      setSelectedNote(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `notes/${noteId}`);
+    }
+  };
+
+  // Upvoting / Liking System
+  const handleLikeNote = async (noteId: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // prevent modal opening triggers
+
+    if (!user) {
+      alert('Please Sign In with Google at the top to like materials and join discussions!');
+      return;
+    }
+
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+
+    const likedByUser = note.likes ? !!note.likes[user.uid] : false;
+    const noteRef = doc(db, 'notes', noteId);
+
+    try {
+      if (likedByUser) {
+        await updateDoc(noteRef, {
+          likesCount: Math.max(0, note.likesCount - 1),
+          [`likes.${user.uid}`]: false
+        });
+        
+        // Live update local view modal if active
+        if (selectedNote && selectedNote.id === noteId) {
+          setSelectedNote({
+            ...selectedNote,
+            likesCount: Math.max(0, selectedNote.likesCount - 1),
+            likes: { ...selectedNote.likes, [user.uid]: false }
+          });
+        }
+      } else {
+        await updateDoc(noteRef, {
+          likesCount: note.likesCount + 1,
+          [`likes.${user.uid}`]: true
+        });
+
+        // Live update local view modal if active
+        if (selectedNote && selectedNote.id === noteId) {
+          setSelectedNote({
+            ...selectedNote,
+            likesCount: selectedNote.likesCount + 1,
+            likes: { ...selectedNote.likes, [user.uid]: true }
+          });
+        }
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `notes/${noteId}`);
     }
   };
 
