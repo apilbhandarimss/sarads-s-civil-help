@@ -433,7 +433,7 @@ export default function App() {
               Sarad's Civil Help
             </h2>
             <p className="text-sm text-slate-400 leading-relaxed max-w-xl">
-              An open educational warehouse for Civil Loksewa, Nepal licensing exams, Pulchowk bachelors semester packets, and masters entrance papers.
+              An open educational warehouse for Bachelor in Civil Engineering, NEC License, Loksewa exams and MSc&BE Entrance.
             </p>
           </div>
           <div className="flex gap-3 z-10 flex-shrink-0">

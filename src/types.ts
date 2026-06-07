@@ -64,7 +64,7 @@ export const CATEGORIES: CategorySpec[] = [
       'Past Questions',
       'Practice Sets & Test series',
       'Short Explanatory Notes',
-      'MCQ Section-wise Prep'
+      'Books'
     ],
     color: 'amber'
   },
