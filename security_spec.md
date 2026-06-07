@@ -2,7 +2,7 @@
 
 ## 1. Data Invariants
 
-- **Authentication**: All writes (create, update, delete) require a signed-in user (`request.auth != null`). Reads are public (`true`) so that any user can study the engineering materials without forcing login, but listing and viewing remain secure from data structure abuse.
+- **Authentication**: All writes (create, update, delete) require a signed-in user (`request.auth != null`). Reads are public (`true`) so that any user can study the engineering materials without forcing login, but listing and viewing remain secure from data structure abuse.##
 - **Creator Identity**: A user can only create a Note where the `userId` in the document matches `request.auth.uid` and the `authorEmail` matches `request.auth.token.email`.
 - **Note Fields Validation**:
   - `title` must be a string between 3 and 100 characters.
