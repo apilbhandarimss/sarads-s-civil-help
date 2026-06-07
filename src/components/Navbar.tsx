@@ -21,7 +21,7 @@ export default function Navbar({ user, onLogin, onLogout, onShareClick }: Navbar
             </div>
             <div>
               <h1 id="header-brand-title" className="font-display text-lg font-bold tracking-tight text-slate-900">
-                Sarads's Civil Help
+                Sarad's Civil Help
               </h1>
               <span id="header-sub" className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest block -mt-1 font-mono">
                 Learning & Exam Hub

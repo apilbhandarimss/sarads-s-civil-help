@@ -30,7 +30,7 @@ export default function LoadingScreen({ message = 'Loading engineering resources
           transition={{ duration: 0.5 }}
           className="font-display text-2xl font-bold tracking-tight text-slate-900"
         >
-          Sarads's Civil Help
+          Sarad's Civil Help
         </motion.h1>
 
         <motion.p
