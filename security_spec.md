@@ -1,4 +1,4 @@
-# Security Specification - Sarads's Civil Help
+# Security Specification - Sarad's Civil Help
 
 ## 1. Data Invariants
 
