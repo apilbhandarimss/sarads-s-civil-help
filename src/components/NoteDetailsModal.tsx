@@ -27,10 +27,8 @@ export default function NoteDetailsModal({
   const [submittingComment, setSubmittingComment] = useState(false);
   const [activeImageTab, setActiveImageTab] = useState(0);
   const [isFullscreenImage, setIsFullscreenImage] = useState<string | null>(null);
-  // 0 = content, 1 = discussion
   const [slideIndex, setSlideIndex] = useState(0);
 
-  // Touch swipe tracking
   const touchStartX = useRef<number | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
 
@@ -53,8 +51,8 @@ export default function NoteDetailsModal({
     if (touchStartX.current === null) return;
     const diff = touchStartX.current - e.changedTouches[0].clientX;
     if (Math.abs(diff) > 50) {
-      if (diff > 0 && slideIndex === 0) goTo(1); // swipe left → discussion
-      if (diff < 0 && slideIndex === 1) goTo(0); // swipe right → content
+      if (diff > 0 && slideIndex === 0) goTo(1);
+      if (diff < 0 && slideIndex === 1) goTo(0);
     }
     touchStartX.current = null;
   };
@@ -88,82 +86,78 @@ export default function NoteDetailsModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-      <div className="bg-white w-full max-w-4xl h-[95vh] sm:h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-white dark:bg-zinc-900 w-full max-w-4xl h-[95vh] sm:h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-zinc-100 dark:border-zinc-800">
 
-        {/* ── Header bar ── */}
-        <div className="flex items-center border-b border-slate-100 bg-white shrink-0 px-1">
-          {/* Tab: Content */}
+        {/* Header tabs */}
+        <div className="flex items-center border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0 px-1">
           <button
             onClick={() => goTo(0)}
-            className="flex-1 py-3.5 text-xs font-bold font-mono uppercase tracking-wider transition-all relative"
-            style={{ color: slideIndex === 0 ? '#0f172a' : '#94a3b8' }}
+            className={`flex-1 py-3 text-xs font-mono uppercase tracking-wider transition-colors relative ${
+              slideIndex === 0
+                ? 'text-zinc-900 dark:text-zinc-50'
+                : 'text-zinc-400 dark:text-zinc-500'
+            }`}
           >
-            📄 Content
+            Content
             {slideIndex === 0 && (
-              <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-slate-900 rounded-full" />
+              <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-zinc-900 dark:bg-zinc-100 rounded-full" />
             )}
           </button>
 
-          {/* Tab: Discussion (mobile only — on desktop it's always visible alongside) */}
           <button
             onClick={() => goTo(1)}
-            className="flex-1 py-3.5 text-xs font-bold font-mono uppercase tracking-wider transition-all relative sm:hidden"
-            style={{ color: slideIndex === 1 ? '#0f172a' : '#94a3b8' }}
+            className={`flex-1 py-3 text-xs font-mono uppercase tracking-wider transition-colors relative sm:hidden ${
+              slideIndex === 1
+                ? 'text-zinc-900 dark:text-zinc-50'
+                : 'text-zinc-400 dark:text-zinc-500'
+            }`}
           >
-            💬 Discussion
+            Discussion
             {comments.length > 0 && (
-              <span className="ml-1 text-[10px] bg-slate-900 text-white rounded-full px-1.5 py-0.5 font-mono">
+              <span className="ml-1 text-[9px] bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-full px-1.5 py-0.5 font-mono">
                 {comments.length}
               </span>
             )}
             {slideIndex === 1 && (
-              <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-slate-900 rounded-full" />
+              <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-zinc-900 dark:bg-zinc-100 rounded-full" />
             )}
           </button>
 
-          {/* Desktop: Q&A label */}
-          <div className="hidden sm:flex items-center px-3 gap-1.5 text-xs font-bold font-mono uppercase text-slate-400 tracking-wider">
+          <div className="hidden sm:flex items-center px-3 gap-1.5 text-xs font-mono uppercase text-zinc-400 dark:text-zinc-500 tracking-wider">
             <BookOpen className="w-3.5 h-3.5" />
             Q&A
           </div>
 
-          <button onClick={onClose} className="px-4 py-3.5 text-slate-400 hover:text-slate-700 transition-colors shrink-0">
-            <X className="w-5 h-5" />
+          <button
+            onClick={onClose}
+            className="px-4 py-3 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors shrink-0"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* ── Body ── */}
+        {/* Body */}
         <div className="flex-1 overflow-hidden flex flex-row">
-
-          {/*
-            MOBILE: sliding viewport — both panels sit side by side in a 200%-wide track,
-            translateX shifts between them with CSS transition.
-            DESKTOP (sm+): both panels always visible side by side normally.
-          */}
-
-          {/* Mobile slider track */}
           <div
             ref={sliderRef}
             className="flex-1 overflow-hidden sm:contents"
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
-            {/* Inner sliding row — 200% wide on mobile, normal flex on desktop */}
             <div
               className="flex h-full sm:contents"
               style={{
                 width: '200%',
                 transform: `translateX(${slideIndex === 0 ? '0%' : '-50%'})`,
-                transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                transition: 'transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
               {/* ── CONTENT PANEL ── */}
               <div
-                className="overflow-y-auto p-5 flex flex-col gap-6 sm:flex-1 sm:border-r sm:border-slate-100"
+                className="overflow-y-auto p-5 flex flex-col gap-5 sm:flex-1 sm:border-r sm:border-zinc-100 sm:dark:border-zinc-800 slide-content"
                 style={{ width: '50%', minWidth: 0 }}
               >
-                {/* sm+ override: full width within flex */}
                 <style>{`
                   @media (min-width: 640px) {
                     .slide-content { width: auto !important; flex: 1 !important; }
@@ -174,15 +168,23 @@ export default function NoteDetailsModal({
 
                 {/* Breadcrumb + title */}
                 <div>
-                  <div className="flex items-center gap-2 mb-2 text-[11px] font-semibold uppercase tracking-wider font-mono text-slate-400">
-                    <span>{note.category}</span><span>/</span>
-                    <span className="text-slate-600">{note.subcategory}</span>
+                  <div className="flex items-center gap-1.5 mb-1.5 text-[10px] font-mono uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                    <span>{note.category}</span>
+                    <span>/</span>
+                    <span className="text-zinc-600 dark:text-zinc-300">{note.subcategory}</span>
                   </div>
-                  <h2 className="font-display text-xl font-bold text-slate-900 leading-tight">{note.title}</h2>
+                  <h2
+                    className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 leading-snug"
+                    style={{ fontFamily: "'DM Sans', sans-serif" }}
+                  >
+                    {note.title}
+                  </h2>
                   {note.tags && note.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
                       {note.tags.map((tag, i) => (
-                        <span key={i} className="text-[10px] font-mono text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">#{tag}</span>
+                        <span key={i} className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
+                          #{tag}
+                        </span>
                       ))}
                     </div>
                   )}
@@ -190,22 +192,29 @@ export default function NoteDetailsModal({
 
                 {/* Admin toolbar */}
                 {isAdmin && (
-                  <div className="p-4 bg-amber-50/70 border border-amber-100 rounded-xl flex flex-wrap items-center justify-between gap-3">
+                  <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 rounded-xl flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs font-bold text-amber-900 font-mono uppercase tracking-wider">Moderator Toolbox</p>
+                      <p className="text-xs font-mono uppercase tracking-wider text-amber-800 dark:text-amber-400">Moderator</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className={`w-2 h-2 rounded-full ${note.isApproved ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
-                        <p className="text-xs text-slate-600">Status: <strong>{note.isApproved ? 'Approved & Public' : 'Pending Review'}</strong></p>
+                        <span className={`text-[10px] font-mono ${note.isApproved ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                          {note.isApproved ? 'approved' : 'pending review'}
+                        </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       {!note.isApproved && onApproveNote && (
-                        <button onClick={onApproveNote} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3.5 py-2 rounded-lg cursor-pointer">
-                          Approve & Publish
+                        <button
+                          onClick={onApproveNote}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+                        >
+                          Approve
                         </button>
                       )}
                       {onDeleteNote && (
-                        <button onClick={onDeleteNote} className="bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 font-semibold text-xs px-3.5 py-2 rounded-lg cursor-pointer flex items-center gap-1.5">
+                        <button
+                          onClick={onDeleteNote}
+                          className="text-red-600 dark:text-red-400 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs font-medium px-3 py-1.5 rounded-lg cursor-pointer flex items-center gap-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                        >
                           <Trash2 className="w-3.5 h-3.5" /> Delete
                         </button>
                       )}
@@ -214,35 +223,42 @@ export default function NoteDetailsModal({
                 )}
 
                 {/* Author + Like */}
-                <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-100 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-slate-200 border border-slate-300 flex items-center justify-center font-bold text-slate-700 text-sm">
+                <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800 rounded-xl">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 flex items-center justify-center font-semibold text-zinc-600 dark:text-zinc-300 text-xs">
                       {note.authorName.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-slate-800">{note.authorName}</p>
-                      <p className="text-[10px] text-slate-400 font-mono">Contributor</p>
+                      <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">{note.authorName}</p>
+                      <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">contributor</p>
                     </div>
                   </div>
-                  <button onClick={onLike} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-colors ${
-                    isLiked ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
-                  }`}>
-                    <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-600 text-rose-600' : ''}`} />
-                    {note.likesCount || 0} Likes
+                  <button
+                    onClick={onLike}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer border transition-colors ${
+                      isLiked
+                        ? 'bg-red-50 dark:bg-red-950/40 border-red-100 dark:border-red-900/50 text-red-500 dark:text-red-400'
+                        : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700'
+                    }`}
+                  >
+                    <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-red-500 dark:fill-red-400' : ''}`} />
+                    {note.likesCount || 0}
                   </button>
                 </div>
 
                 {/* Description */}
                 <div>
-                  <h4 className="text-xs font-bold font-mono uppercase tracking-wider text-slate-500 mb-2">Summary</h4>
-                  <p className="text-sm text-slate-600 leading-relaxed bg-slate-50/50 p-4 rounded-xl border border-dashed border-slate-200">{note.description}</p>
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">Summary</p>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700">
+                    {note.description}
+                  </p>
                 </div>
 
                 {/* Notes / Formulas */}
                 {note.content && (
                   <div>
-                    <h4 className="text-xs font-bold font-mono uppercase tracking-wider text-slate-500 mb-2">Notes & Formulas</h4>
-                    <div className="text-[13px] text-slate-100 font-mono leading-relaxed whitespace-pre-line bg-slate-900 p-5 rounded-xl overflow-x-auto border border-slate-950">
+                    <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">Notes & Formulas</p>
+                    <div className="text-[13px] text-zinc-100 font-mono leading-relaxed whitespace-pre-line bg-zinc-950 dark:bg-zinc-950 p-4 rounded-xl overflow-x-auto border border-zinc-800">
                       {note.content}
                     </div>
                   </div>
@@ -253,27 +269,38 @@ export default function NoteDetailsModal({
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
-                        <ImageIcon className="w-4 h-4 text-slate-500" />
-                        <h4 className="text-xs font-bold font-mono uppercase tracking-wider text-slate-500">Engineering Sheets</h4>
+                        <ImageIcon className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500" />
+                        <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                          Engineering Sheets
+                        </p>
                       </div>
-                      <span className="text-[10px] text-slate-400 font-mono bg-slate-100 px-2 py-0.5 rounded-md">{note.imageUrls.length} pages</span>
+                      <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
+                        {note.imageUrls.length} pages
+                      </span>
                     </div>
-                    <div className="relative aspect-[4/3] bg-slate-900 rounded-xl overflow-hidden border border-slate-950 flex items-center justify-center">
+                    <div className="relative aspect-[4/3] bg-zinc-950 rounded-xl overflow-hidden border border-zinc-800 flex items-center justify-center">
                       <img
                         src={note.imageUrls[activeImageTab]}
                         alt={`Sheet ${activeImageTab + 1}`}
                         className="max-h-full max-w-full object-contain cursor-zoom-in"
                         onClick={() => setIsFullscreenImage(note.imageUrls![activeImageTab])}
                       />
-                      <div className="absolute bottom-3 right-3 bg-black/70 text-white px-2.5 py-1 text-[10px] font-mono rounded-md">
+                      <div className="absolute bottom-3 right-3 bg-black/70 text-white px-2 py-0.5 text-[10px] font-mono rounded">
                         {activeImageTab + 1} / {note.imageUrls.length}
                       </div>
                     </div>
                     {note.imageUrls.length > 1 && (
                       <div className="flex gap-2 overflow-x-auto py-1">
                         {note.imageUrls.map((url, idx) => (
-                          <button key={idx} onClick={() => setActiveImageTab(idx)}
-                            className={`w-16 h-12 rounded-md overflow-hidden border-2 flex-shrink-0 cursor-pointer transition-all ${activeImageTab === idx ? 'border-slate-900 scale-95' : 'border-slate-200'}`}>
+                          <button
+                            key={idx}
+                            onClick={() => setActiveImageTab(idx)}
+                            className={`w-14 h-10 rounded-lg overflow-hidden border-2 flex-shrink-0 cursor-pointer transition-all ${
+                              activeImageTab === idx
+                                ? 'border-zinc-900 dark:border-zinc-100 scale-95'
+                                : 'border-zinc-200 dark:border-zinc-700'
+                            }`}
+                          >
                             <img src={url} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" />
                           </button>
                         ))}
@@ -286,60 +313,65 @@ export default function NoteDetailsModal({
                 {note.pdfUrl && (
                   <div>
                     <div className="flex items-center gap-1.5 mb-2">
-                      <FileText className="w-4 h-4 text-slate-500" />
-                      <h4 className="text-xs font-bold font-mono uppercase tracking-wider text-slate-500">PDF Document</h4>
+                      <FileText className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500" />
+                      <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 dark:text-zinc-500">PDF Document</p>
                     </div>
-                    <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50 h-[400px]">
+                    <div className="border border-zinc-200 dark:border-zinc-700 rounded-xl overflow-hidden bg-zinc-50 dark:bg-zinc-800 h-[380px]">
                       <iframe src={getEmbeddablePdfUrl(note.pdfUrl)} title="PDF" width="100%" height="100%" style={{ border: 'none' }} />
                     </div>
-                    <p className="text-[10px] text-slate-400 italic text-center mt-1">Read-only PDF view</p>
+                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono text-center mt-1">read-only pdf view</p>
                   </div>
                 )}
 
-                {/* Mobile: swipe hint at bottom of content */}
-                <div className="sm:hidden flex items-center justify-center gap-2 pb-2 text-[10px] text-slate-400 font-mono">
-                  <span>swipe left for discussion</span>
-                  <span>→</span>
+                {/* Mobile swipe hint */}
+                <div className="sm:hidden flex items-center justify-center gap-2 pb-2 text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
+                  <span>swipe left for discussion →</span>
                 </div>
               </div>
 
               {/* ── DISCUSSION PANEL ── */}
               <div
-                className="flex flex-col bg-slate-50/50 border-slate-100 overflow-hidden"
-                style={{ width: '50%', minWidth: 0, borderLeft: '1px solid #f1f5f9' }}
+                className="flex flex-col bg-zinc-50/50 dark:bg-zinc-900/80 border-zinc-100 dark:border-zinc-800 overflow-hidden slide-discussion"
+                style={{ width: '50%', minWidth: 0, borderLeft: '1px solid' }}
               >
                 {/* Comments list */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-3">
                   {comments.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center text-slate-400 py-16">
-                      <MessageCircle className="w-8 h-8 text-slate-200 mb-3" />
-                      <p className="text-xs font-medium">No discussions yet.</p>
-                      <p className="text-[10px] mt-1">Be the first to post!</p>
+                    <div className="flex flex-col items-center justify-center h-full text-center text-zinc-400 py-16">
+                      <MessageCircle className="w-7 h-7 text-zinc-200 dark:text-zinc-700 mb-3" />
+                      <p className="text-xs font-medium text-zinc-400 dark:text-zinc-500">No discussions yet.</p>
+                      <p className="text-[10px] mt-1 text-zinc-400 dark:text-zinc-600 font-mono">be the first to post</p>
                     </div>
                   ) : (
                     comments.map((comment) => (
-                      <div key={comment.id} className="bg-white border border-slate-100 rounded-xl p-3.5 space-y-2 shadow-sm">
+                      <div
+                        key={comment.id}
+                        className="bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-xl p-3 space-y-1.5"
+                      >
                         <div className="flex justify-between items-start gap-1">
                           <div>
-                            <p className="text-xs font-bold text-slate-800">{comment.authorName}</p>
-                            <p className="text-[9px] text-slate-400 font-mono flex items-center gap-1">
+                            <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">{comment.authorName}</p>
+                            <p className="text-[9px] text-zinc-400 dark:text-zinc-500 font-mono flex items-center gap-1">
                               <Clock className="w-2.5 h-2.5" />{formattedDate(comment.createdAt)}
                             </p>
                           </div>
                           {user && comment.userId === user.uid && (
-                            <button onClick={() => onDeleteComment(comment.id)} className="text-slate-400 hover:text-rose-600 cursor-pointer p-0.5 rounded hover:bg-rose-50">
+                            <button
+                              onClick={() => onDeleteComment(comment.id)}
+                              className="text-zinc-400 hover:text-red-500 dark:hover:text-red-400 cursor-pointer p-0.5 rounded"
+                            >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </div>
-                        <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-line">{comment.text}</p>
+                        <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed whitespace-pre-line">{comment.text}</p>
                       </div>
                     ))
                   )}
                 </div>
 
                 {/* Comment input */}
-                <div className="p-4 border-t border-slate-100 shrink-0">
+                <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 shrink-0">
                   {user ? (
                     <form onSubmit={handleCommentSubmit} className="flex gap-1.5 items-end">
                       <textarea
@@ -347,17 +379,23 @@ export default function NoteDetailsModal({
                         placeholder="Ask a question or add notes..."
                         value={commentInput}
                         onChange={(e) => setCommentInput(e.target.value)}
-                        className="flex-1 text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 resize-none"
+                        className="flex-1 text-xs bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-2 text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-500 resize-none"
                       />
-                      <button type="submit" disabled={submittingComment || !commentInput.trim()}
-                        className="bg-slate-900 text-white p-2.5 rounded-lg hover:bg-slate-800 disabled:opacity-40 cursor-pointer flex items-center justify-center shrink-0">
+                      <button
+                        type="submit"
+                        disabled={submittingComment || !commentInput.trim()}
+                        className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 p-2.5 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-40 cursor-pointer flex items-center justify-center shrink-0 transition-colors"
+                      >
                         <Send className="w-3.5 h-3.5" />
                       </button>
                     </form>
                   ) : (
-                    <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-center">
-                      <p className="text-[11px] font-semibold text-amber-800 mb-2">Sign in to join discussion</p>
-                      <button onClick={onLogin} className="text-[11px] bg-white border border-slate-200 text-slate-800 font-bold px-3 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer">
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 rounded-xl text-center">
+                      <p className="text-[11px] font-medium text-amber-800 dark:text-amber-400 mb-2">Sign in to join discussion</p>
+                      <button
+                        onClick={onLogin}
+                        className="text-[11px] bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 font-medium px-3 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700 cursor-pointer transition-colors"
+                      >
                         Sign In with Google
                       </button>
                     </div>
@@ -365,33 +403,40 @@ export default function NoteDetailsModal({
                 </div>
               </div>
 
-            </div>{/* end slide track */}
-          </div>{/* end mobile slider wrapper */}
+            </div>
+          </div>
+        </div>
 
-        </div>{/* end body */}
-
-        {/* ── Mobile dot indicators ── */}
-        <div className="sm:hidden flex items-center justify-center gap-2 py-2 border-t border-slate-100 bg-white shrink-0">
-          <button onClick={() => goTo(0)}
-            className="w-2 h-2 rounded-full transition-all cursor-pointer"
-            style={{ background: slideIndex === 0 ? '#0f172a' : '#cbd5e1' }}
+        {/* Mobile dot nav */}
+        <div className="sm:hidden flex items-center justify-center gap-2 py-2 border-t border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0">
+          <button
+            onClick={() => goTo(0)}
+            className="w-1.5 h-1.5 rounded-full transition-all cursor-pointer"
+            style={{ background: slideIndex === 0 ? (document.documentElement.classList.contains('dark') ? '#f4f4f5' : '#18181b') : '#d4d4d8' }}
           />
-          <button onClick={() => goTo(1)}
-            className="w-2 h-2 rounded-full transition-all cursor-pointer"
-            style={{ background: slideIndex === 1 ? '#0f172a' : '#cbd5e1' }}
+          <button
+            onClick={() => goTo(1)}
+            className="w-1.5 h-1.5 rounded-full transition-all cursor-pointer"
+            style={{ background: slideIndex === 1 ? (document.documentElement.classList.contains('dark') ? '#f4f4f5' : '#18181b') : '#d4d4d8' }}
           />
         </div>
 
-      </div>{/* end modal card */}
+      </div>
 
       {/* Fullscreen lightbox */}
       {isFullscreenImage && (
-        <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4" onClick={() => setIsFullscreenImage(null)}>
-          <button onClick={() => setIsFullscreenImage(null)} className="absolute top-6 right-6 text-white bg-white/10 hover:bg-white/20 p-2 rounded-full cursor-pointer">
-            <X className="w-6 h-6" />
+        <div
+          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
+          onClick={() => setIsFullscreenImage(null)}
+        >
+          <button
+            onClick={() => setIsFullscreenImage(null)}
+            className="absolute top-5 right-5 text-white bg-white/10 hover:bg-white/20 p-2 rounded-full cursor-pointer"
+          >
+            <X className="w-5 h-5" />
           </button>
           <img src={isFullscreenImage} alt="Fullscreen" className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg" />
-          <p className="absolute bottom-6 inset-x-0 text-center text-white/50 text-xs font-mono">Tap anywhere to close</p>
+          <p className="absolute bottom-5 inset-x-0 text-center text-white/40 text-[10px] font-mono">tap anywhere to close</p>
         </div>
       )}
     </div>

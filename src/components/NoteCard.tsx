@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Heart, Image as ImageIcon, MessageSquare } from 'lucide-react';
+import { FileText, Heart, Image as ImageIcon } from 'lucide-react';
 import { Note } from '../types';
 
 interface NoteCardProps {
@@ -9,124 +9,133 @@ interface NoteCardProps {
   onLike: (noteId: string, event: React.MouseEvent) => void;
 }
 
+const categoryColors: Record<string, string> = {
+  loksewa:   'border-emerald-500/70 text-emerald-600 dark:text-emerald-400',
+  license:   'border-amber-500/70 text-amber-600 dark:text-amber-400',
+  bachelors: 'border-blue-500/70 text-blue-600 dark:text-blue-400',
+  entrance:  'border-violet-500/70 text-violet-600 dark:text-violet-400',
+  masters:   'border-rose-500/70 text-rose-600 dark:text-rose-400',
+};
+
 export default function NoteCard({ note, onView, currentUserId, onLike }: NoteCardProps) {
   const isLiked = currentUserId ? !!(note.likes && note.likes[currentUserId]) : false;
 
-  const categoryThemes = {
-    loksewa: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-    license: 'bg-amber-50 text-amber-700 border-amber-100',
-    bachelors: 'bg-blue-50 text-blue-700 border-blue-100',
-    entrance: 'bg-violet-50 text-violet-700 border-violet-100',
-    masters: 'bg-rose-50 text-rose-700 border-rose-100'
-  };
-
   const formattedDate = () => {
     if (!note.createdAt) return 'Recent';
-    
-    // Support firebase Timestamp structure OR ISO string
     let dateObj: Date;
-    if (note.createdAt && typeof note.createdAt.toDate === 'function') {
-      dateObj = note.createdAt.toDate();
+    if (typeof (note.createdAt as any).toDate === 'function') {
+      dateObj = (note.createdAt as any).toDate();
     } else {
-      dateObj = new Date(note.createdAt);
+      dateObj = new Date(note.createdAt as any);
     }
-    
-    return isNaN(dateObj.getTime()) ? 'Recent' : dateObj.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    return isNaN(dateObj.getTime())
+      ? 'Recent'
+      : dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const activeCategoryColor = categoryColors[note.category] || 'border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400';
+
+  // 90% Transparent Gradient Styles (10% Opacity)
+  const glassGradientStyle = {
+    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(168, 85, 247, 0.08) 100%)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
   };
 
   return (
     <div
-      id={`note-card-${note.id}`}
       onClick={() => onView(note)}
-      className="bg-white border border-slate-100 rounded-xl p-5 hover:border-slate-300 transition-all duration-200 hover:shadow-xs flex flex-col justify-between min-h-[270px] h-auto group cursor-pointer"
+      style={glassGradientStyle}
+      className="
+        group flex flex-col justify-between p-5 min-h-[220px] cursor-pointer 
+        rounded-xl transition-all duration-300
+        
+        /* Ultra-thin glassy borders */
+        border border-white/20 dark:border-purple-500/10
+        
+        /* Interactive glass lift effect */
+        hover:border-white/40 dark:hover:border-purple-400/20
+        hover:shadow-[0_12px_30px_rgba(168,85,247,0.04)]
+        hover:translate-y-[-2px]
+      "
     >
-      <div id={`card-heading-${note.id}`}>
-        {/* Meta Line - Category & Subcategory */}
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <span
-            className={`text-[10px] font-semibold font-mono uppercase px-2 py-0.5 rounded-full border ${categoryThemes[note.category] || 'bg-slate-50 text-slate-700 border-slate-100'}`}
-          >
+      <div>
+        {/* Meta Header */}
+        <div className="flex flex-wrap items-center gap-2 text-xs mb-3 text-zinc-500 dark:text-zinc-400">
+          <span className={`pl-2 border-l-2 font-medium capitalize ${activeCategoryColor}`}>
             {note.category}
           </span>
+          
           {note.subcategory && note.subcategory !== 'All Subcategories' && (
-            <span className="text-[10px] font-medium font-sans text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md truncate max-w-[150px]">
-              {note.subcategory}
-            </span>
+            <>
+              <span className="text-zinc-300 dark:text-zinc-700">•</span>
+              <span className="truncate max-w-[120px]">{note.subcategory}</span>
+            </>
           )}
+
           {note.isApproved === false && (
-            <span className="text-[10px] font-bold font-mono uppercase text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
-              Pending Review
+            <span className="ml-auto text-[10px] tracking-wider uppercase font-medium text-amber-600 dark:text-amber-400">
+              Pending
             </span>
           )}
         </div>
 
         {/* Title */}
-        <h3 className="font-display text-base font-semibold text-slate-900 group-hover:text-slate-800 line-clamp-1 mb-1.5 transition-colors">
+        <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100 group-hover:text-purple-600 dark:group-hover:text-purple-400 line-clamp-1 transition-colors">
           {note.title}
         </h3>
 
-        {/* Tags list */}
+        {/* Description */}
+        <p className="mt-1.5 text-xs text-zinc-400 dark:text-zinc-500 line-clamp-3 leading-relaxed">
+          {note.description}
+        </p>
+
+        {/* Tags */}
         {note.tags && note.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2">
-            {note.tags.map((tag, i) => (
-              <span key={i} className="text-[10px] font-medium font-mono text-slate-500 bg-slate-100/80 hover:bg-slate-100 px-2 py-0.5 rounded-md">
+          <div className="flex flex-wrap gap-1 mt-3">
+            {note.tags.slice(0, 3).map((tag, i) => (
+              <span key={i} className="text-[10px] text-zinc-400 dark:text-zinc-500/80">
                 #{tag}
               </span>
             ))}
           </div>
         )}
-
-        {/* Description */}
-        <p className="text-sm text-slate-500 line-clamp-3 mb-4 font-sans leading-relaxed">
-          {note.description}
-        </p>
       </div>
 
-      <div id={`card-footer-${note.id}`} className="pt-3 border-t border-slate-50 flex items-center justify-between mt-auto">
-        {/* Attachment Indicators & Likes Action */}
+      {/* Footer */}
+      <div className="pt-3 mt-4 border-t border-zinc-200/20 dark:border-zinc-800/20 flex items-center justify-between text-xs">
         <div className="flex items-center gap-3">
-          {/* Liking Button */}
+          {/* Like Button */}
           <button
-            id={`btn-like-${note.id}`}
-            onClick={(event) => onLike(note.id, event)}
-            className={`flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-md transition-colors cursor-pointer ${
-              isLiked 
-                ? 'text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700' 
-                : 'text-slate-400 bg-slate-50 hover:bg-slate-100 hover:text-slate-600'
+            onClick={(e) => onLike(note.id, e)}
+            className={`flex items-center gap-1.5 py-1 px-2 rounded-md transition-all ${
+              isLiked
+                ? 'text-red-500 bg-red-50/50 dark:bg-red-500/10'
+                : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-400'
             }`}
-            title={currentUserId ? (isLiked ? 'Unlike note' : 'Like note') : 'Sign in to like'}
           >
-            <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-600 text-rose-600' : ''}`} />
-            <span className="font-mono">{note.likesCount || 0}</span>
+            <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current' : ''}`} />
+            <span className="text-[11px] font-medium">{note.likesCount || 0}</span>
           </button>
 
-          {/* Embedded Image Attachment Status */}
-          {note.imageUrls && note.imageUrls.length > 0 && (
-            <span className="flex items-center gap-1 text-[11px] text-slate-500 font-medium" title={`${note.imageUrls.length} image(s) embedded`}>
-              <ImageIcon className="w-3.5 h-3.5 text-slate-400" />
-              <span className="font-mono">{note.imageUrls.length}</span>
-            </span>
-          )}
-
-          {/* Read Only PDF Attachment Status */}
-          {note.pdfUrl && (
-            <span className="flex items-center gap-1 text-[11px] text-slate-500 font-medium" title="Read-only PDF attached">
-              <FileText className="w-3.5 h-3.5 text-slate-400" />
-              <span className="font-mono">PDF</span>
-            </span>
-          )}
+          {/* Attachments */}
+          <div className="flex items-center gap-2 text-zinc-400 dark:text-zinc-500">
+            {note.imageUrls && note.imageUrls.length > 0 && (
+              <div className="flex items-center gap-1">
+                <ImageIcon className="w-3 h-3" />
+                <span className="text-[11px]">{note.imageUrls.length}</span>
+              </div>
+            )}
+            {note.pdfUrl && <FileText className="w-3 h-3" />}
+          </div>
         </div>
 
-        {/* Author & Timestamp */}
-        <div className="text-right flex flex-col items-end max-w-[120px]">
-          <span className="text-[11px] font-medium text-slate-700 truncate w-full">
+        {/* Author / Date Info */}
+        <div className="text-right text-[11px]">
+          <span className="block font-medium text-zinc-600 dark:text-zinc-400 truncate max-w-[100px]">
             {note.authorName}
           </span>
-          <span className="text-[10px] text-slate-400 font-mono">
+          <span className="block text-zinc-400 dark:text-zinc-500 text-[10px] mt-0.5">
             {formattedDate()}
           </span>
         </div>
