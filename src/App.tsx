@@ -17,6 +17,7 @@ import {
   Sparkles,
   Trash2
 } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 
 const ADMIN_EMAILS = [
   'apibhan@gmail.com',
@@ -662,6 +663,7 @@ const isAdmin = !!user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
           <span className="text-[11px] text-slate-400">DEVNEP © 2026</span>
         </div>
       </footer>
+      <Analytics />
     </div>
   );
 }
