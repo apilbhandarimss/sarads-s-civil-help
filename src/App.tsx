@@ -16,6 +16,7 @@ import {
   Search,
   Trash2
 } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 
 const ADMIN_EMAILS = [
   'apibhan@gmail.com',
@@ -482,6 +483,7 @@ export default function App() {
           <span className="font-mono text-[10px] tracking-wider uppercase">DevNep © 2026</span>
         </div>
       </footer>
+      <Analytics />
     </div>
   );
 }
