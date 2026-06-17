@@ -43,7 +43,7 @@ export default function AboutUsModal({ isOpen, onClose }: AboutUsModalProps) {
               alt="Sarad Bhandari" 
               className="w-full h-full object-cover"
               onError={(e) => {
-                e.currentTarget.src = 'https://ui-avatars.com/api/?name=Sarad+Bhandari&background=random';
+                e.currentTarget.src = '';
               }}
             />
           </div>
