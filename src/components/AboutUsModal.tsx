@@ -39,11 +39,11 @@ export default function AboutUsModal({ isOpen, onClose }: AboutUsModalProps) {
           {/* Founder Image Container */}
           <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700">
             <img 
-              src="./images/image.png" 
+              src="https://i.imgur.com/poGVYNr.png" 
               alt="Sarad Bhandari" 
               className="w-full h-full object-cover"
               onError={(e) => {
-                e.currentTarget.src = '';
+                e.currentTarget.src = 'https://ui-avatars.com/api/?name=Sarad+Bhandari&background=random';
               }}
             />
           </div>
