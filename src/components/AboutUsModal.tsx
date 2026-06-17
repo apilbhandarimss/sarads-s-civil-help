@@ -36,19 +36,22 @@ export default function AboutUsModal({ isOpen, onClose }: AboutUsModalProps) {
 
         {/* Founder Context Area */}
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-          {/* Flat Founder Image Placeholder */}
+          {/* Founder Image Container */}
           <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700">
             <img 
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80" 
-              alt="Founder Profile" 
-              className="w-full h-full object-cover grayscale font-sans text-[10px] text-center pt-6 text-zinc-400"
+              src="./images/image.png" 
+              alt="Sarad Bhandari" 
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.src = 'https://ui-avatars.com/api/?name=Sarad+Bhandari&background=random';
+              }}
             />
           </div>
 
           {/* Profile & Initiative Descriptions */}
           <div className="space-y-2 text-center sm:text-left">
             <div>
-              <h4 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Sarad Sapkota</h4>
+              <h4 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Sarad Bhandari</h4>
               <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block">Founder & Coordinator</span>
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
