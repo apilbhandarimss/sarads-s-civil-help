@@ -1,4 +1,4 @@
-export type NoteCategory = 'loksewa' | 'license' | 'bachelors' | 'entrance' | 'masters';
+export type NoteCategory = 'loksewa' | 'license' | 'bachelors' | 'entrance' | 'masters' | 'masters_study';
 
 export interface Note {
   id: string;
@@ -112,5 +112,18 @@ export const CATEGORIES: CategorySpec[] = [
       'Syllabus & Past Papers'
     ],
     color: 'rose'
+  },
+  {
+    id: 'masters_study',
+    label: 'Masters Study Materials',
+    description: 'Semester-wise notes, assignments, reference materials, presentations, and study resources for M.Sc. Engineering students.',
+    subcategories: [
+      'All Subcategories',
+      '1st Sem Assignments',
+      '1st Sem Materials',
+      '2nd Sem Assignments',
+      '2nd Sem Materials'
+    ],
+    color: 'cyan'
   }
 ];
