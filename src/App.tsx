@@ -9,7 +9,7 @@ import NoteCard from './components/NoteCard';
 import ShareNoteModal from './components/ShareNoteModal';
 import NoteDetailsModal from './components/NoteDetailsModal';
 import AboutUsModal from './components/AboutUsModal';
-import ProfileDashboard from './components/ProfileDashboard';
+import ProfileDashboard from './components/Profiledashboard';
 import { BookOpen, Database, Plus, Search, Trash2 } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 
