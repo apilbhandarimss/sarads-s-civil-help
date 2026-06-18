@@ -16,12 +16,14 @@ interface NoteDetailsModalProps {
   isAdmin?: boolean;
   onApproveNote?: () => void;
   onDeleteNote?: () => void;
+  onViewProfile: (userId: string, authorName: string) => void;
 }
 
 export default function NoteDetailsModal({
   note, isOpen, onClose, user, onLogin,
   comments, onAddComment, onDeleteComment,
-  onLike, isAdmin = false, onApproveNote, onDeleteNote
+  onLike, isAdmin = false, onApproveNote, onDeleteNote,
+  onViewProfile
 }: NoteDetailsModalProps) {
   const [commentInput, setCommentInput] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -224,15 +226,20 @@ export default function NoteDetailsModal({
 
                 {/* Author + Like */}
                 <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800 rounded-xl">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 flex items-center justify-center font-semibold text-zinc-600 dark:text-zinc-300 text-xs">
+                  <button 
+                    onClick={() => onViewProfile(note.userId, note.authorName)}
+                    className="flex items-center gap-2.5 text-left group cursor-pointer focus:outline-none focus:ring-2 focus:ring-zinc-400 rounded-lg p-0.5"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 flex items-center justify-center font-semibold text-zinc-600 dark:text-zinc-300 text-xs group-hover:border-zinc-400 dark:group-hover:border-zinc-500 transition-colors">
                       {note.authorName.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">{note.authorName}</p>
-                      <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">contributor</p>
+                      <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200 group-hover:underline decoration-zinc-400">
+                        {note.authorName}
+                      </p>
+                      <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">view architecture row</p>
                     </div>
-                  </div>
+                  </button>
                   <button
                     onClick={onLike}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer border transition-colors ${

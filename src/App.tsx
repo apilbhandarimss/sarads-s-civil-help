@@ -9,7 +9,7 @@ import NoteCard from './components/NoteCard';
 import ShareNoteModal from './components/ShareNoteModal';
 import NoteDetailsModal from './components/NoteDetailsModal';
 import AboutUsModal from './components/AboutUsModal';
-import ProfileDashboard from './components/Profiledashboard';
+import ProfileDashboard from './components/ProfileDashboard';
 import { BookOpen, Database, Plus, Search, Trash2 } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 
@@ -49,6 +49,7 @@ const SEED_DATA_PACKETS = [
 export default function App() {
   const [dark, toggleDark] = useDarkMode();
   const [user, setUser] = useState<User | null>(null);
+  const [customProfileUser, setCustomProfileUser] = useState<{ uid: string; displayName: string } | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [isBooting, setIsBooting] = useState(true);
@@ -141,7 +142,7 @@ export default function App() {
 
   const handleLogin = async () => { try { await loginWithGoogle(); } catch (err) { console.error(err); } };
   const handleLogout = async () => {
-    try { await logoutUser(); setIsDetailsModalOpen(false); setSelectedNote(null); setIsProfileOpen(false); }
+    try { await logoutUser(); setIsDetailsModalOpen(false); setSelectedNote(null); setIsProfileOpen(false); setCustomProfileUser(null); }
     catch (err) { console.error(err); }
   };
   const handleShareClick = () => { if (!user) { handleLogin(); return; } setIsShareModalOpen(true); };
@@ -215,6 +216,12 @@ export default function App() {
 
   const handleOpenNoteDetails = (note: Note) => { setSelectedNote(note); setIsDetailsModalOpen(true); };
 
+  const handleViewPosterProfile = (userId: string, authorName: string) => {
+    setCustomProfileUser({ uid: userId, displayName: authorName });
+    setIsDetailsModalOpen(false);
+    setIsProfileOpen(true);
+  };
+
   const activeCategorySpec = selectedCategory !== 'all' ? CATEGORIES.find(c => c.id === selectedCategory) : null;
   const activeSubcategoryList = activeCategorySpec?.subcategories ?? [];
 
@@ -249,7 +256,7 @@ export default function App() {
         dark={dark}
         onToggleDark={toggleDark}
         onAboutClick={() => setIsAboutModalOpen(true)}
-        onProfileClick={() => setIsProfileOpen(true)}
+        onProfileClick={() => { setCustomProfileUser(null); setIsProfileOpen(true); }}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex-1 w-full flex flex-col items-center">
@@ -280,7 +287,6 @@ export default function App() {
         </div>
 
         <div className="w-full max-w-4xl space-y-4 mb-8">
-          {/* FIXED: Using flex-wrap instead of overflow-x-auto */}
           <div className="flex flex-wrap justify-center items-center gap-1.5 pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
             <button
               onClick={() => { setSelectedCategory('all'); setSelectedSubcategory('All Subcategories'); }}
@@ -382,15 +388,16 @@ export default function App() {
         isAdmin={isAdmin}
         onApproveNote={() => selectedNote && handleApproveNote(selectedNote.id)}
         onDeleteNote={() => selectedNote && handleAdminDeleteNote(selectedNote.id)}
+        onViewProfile={handleViewPosterProfile}
       />
 
       <AboutUsModal isOpen={isAboutModalOpen} onClose={() => setIsAboutModalOpen(false)} />
 
-      {user && (
+      {isProfileOpen && (customProfileUser || user) && (
         <ProfileDashboard
           isOpen={isProfileOpen}
-          onClose={() => setIsProfileOpen(false)}
-          user={user}
+          onClose={() => { setIsProfileOpen(false); setCustomProfileUser(null); }}
+          user={(customProfileUser || user) as User}
           notes={notes}
           onViewNote={handleOpenNoteDetails}
         />
