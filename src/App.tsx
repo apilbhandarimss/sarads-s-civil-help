@@ -63,6 +63,7 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<NoteCategory | 'all'>('all');
   const [selectedSubcategory, setSelectedSubcategory] = useState('All Subcategories');
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [noteOpenCount, setNoteOpenCount] = useState(0);
 
   const isAdmin = !!user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
 
@@ -143,7 +144,7 @@ export default function App() {
 
   const handleLogin = async () => { try { await loginWithGoogle(); } catch (err) { console.error(err); } };
   const handleLogout = async () => {
-    try { await logoutUser(); setIsDetailsModalOpen(false); setSelectedNote(null); setIsProfileOpen(false); setCustomProfileUser(null); }
+    try { await logoutUser(); setIsDetailsModalOpen(false); setSelectedNote(null); setIsProfileOpen(false); setCustomProfileUser(null); setNoteOpenCount(0); }
     catch (err) { console.error(err); }
   };
   const handleShareClick = () => { if (!user) { handleLogin(); return; } setIsShareModalOpen(true); };
@@ -215,7 +216,18 @@ export default function App() {
     catch (error) { handleFirestoreError(error, OperationType.DELETE, `notes/${noteId}`); }
   };
 
-  const handleOpenNoteDetails = (note: Note) => { setSelectedNote(note); setIsDetailsModalOpen(true); };
+  const handleOpenNoteDetails = (note: Note) => {
+    if (!user && noteOpenCount >= 2) {
+      alert('You\'ve used your 2 free previews. Please sign in to continue viewing materials.');
+      handleLogin();
+      return;
+    }
+    setSelectedNote(note);
+    setIsDetailsModalOpen(true);
+    if (!user) {
+      setNoteOpenCount(prev => prev + 1);
+    }
+  };
 
   const handleViewPosterProfile = (userId: string, authorName: string) => {
     setCustomProfileUser({ uid: userId, displayName: authorName });
@@ -405,6 +417,15 @@ export default function App() {
             <button onClick={handleAutoSeed} className="text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-400 flex items-center gap-1.5 border border-dashed border-zinc-200 dark:border-zinc-800 px-3 py-1.5 rounded-md transition-colors">
               <Database className="w-3.5 h-3.5" /> Initialize Sample Data Packets
             </button>
+          </div>
+        )}
+
+        {/* Free Preview Counter - Show when user not logged in */}
+        {!user && noteOpenCount > 0 && (
+          <div className="w-full max-w-7xl mb-4 px-4 py-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-lg text-center">
+            <p className="text-xs text-amber-800 dark:text-amber-200">
+              <span className="font-semibold">{2 - noteOpenCount}</span> free preview{2 - noteOpenCount !== 1 ? 's' : ''} remaining • <button onClick={handleLogin} className="underline font-medium hover:no-underline">Sign in</button> to unlock unlimited access
+            </p>
           </div>
         )}
 
