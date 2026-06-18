@@ -10,7 +10,7 @@ import ShareNoteModal from './components/ShareNoteModal';
 import NoteDetailsModal from './components/NoteDetailsModal';
 import AboutUsModal from './components/AboutUsModal';
 import ProfileDashboard from './components/Profiledashboard';
-import { BookOpen, Database, Plus, Search, Trash2 } from 'lucide-react';
+import { BookOpen, Database, Plus, Search, Trash2, ChevronDown } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 
 const ADMIN_EMAILS = ['apibhan@gmail.com', 'saradbhandari146@gmail.com'];
@@ -62,6 +62,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<NoteCategory | 'all'>('all');
   const [selectedSubcategory, setSelectedSubcategory] = useState('All Subcategories');
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 
   const isAdmin = !!user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
 
@@ -245,6 +246,8 @@ export default function App() {
 
   if (isBooting) return <LoadingScreen message="Loading Civil Help Material Database..." />;
 
+  const selectedCategoryLabel = selectedCategory === 'all' ? 'All Materials' : CATEGORIES.find(c => c.id === selectedCategory)?.label || 'All Materials';
+
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950 font-sans flex flex-col justify-between relative selection:bg-zinc-200 dark:selection:bg-zinc-800">
 
@@ -259,11 +262,12 @@ export default function App() {
         onProfileClick={() => { setCustomProfileUser(null); setIsProfileOpen(true); }}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex-1 w-full flex flex-col items-center">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex-1 w-full flex flex-col items-center">
 
-        <div className="w-full max-w-2xl text-center pt-20 pb-12 flex flex-col items-center space-y-6">
+        {/* Header & Search - Compact on Mobile */}
+        <div className="w-full max-w-2xl text-center pt-10 sm:pt-20 pb-6 sm:pb-12 flex flex-col items-center space-y-4">
           <div className="space-y-1">
-            <h2 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Sarad's Civil Help</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Sarad's Civil Help</h2>
             <p className="text-xs text-zinc-400 dark:text-zinc-500 max-w-sm mx-auto">Search open warehouses for BE, NEC License, and Loksewa.</p>
           </div>
           <div className="w-full relative">
@@ -272,61 +276,120 @@ export default function App() {
             </div>
             <input
               type="text"
-              placeholder="Search equations, topics, chapters, or tags..."
+              placeholder="Search equations, topics, chapters..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-sm pl-11 pr-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full shadow-[0_1px_6px_rgba(0,0,0,0.03)] text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all"
+              className="w-full text-sm pl-11 pr-4 py-2.5 sm:py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full shadow-[0_1px_6px_rgba(0,0,0,0.03)] text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all"
             />
           </div>
-          <div className="pt-2">
-            <button onClick={handleShareClick} className="px-6 py-2.5 rounded-md text-xs font-medium bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 transition-colors cursor-pointer shadow-sm flex items-center gap-2">
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              Share Your Study Material
-            </button>
-          </div>
+          <button onClick={handleShareClick} className="px-5 py-2 sm:px-6 sm:py-2.5 rounded-md text-xs font-medium bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 transition-colors cursor-pointer shadow-sm flex items-center gap-2">
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span className="hidden sm:inline">Share Your Study Material</span>
+            <span className="sm:hidden">Share</span>
+          </button>
         </div>
 
-        <div className="w-full max-w-4xl space-y-4 mb-8">
-          <div className="flex flex-wrap justify-center items-center gap-1.5 pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
-            <button
-              onClick={() => { setSelectedCategory('all'); setSelectedSubcategory('All Subcategories'); }}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${selectedCategory === 'all' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900'}`}
-            >
-              All Materials ({notes.length})
-            </button>
-            {CATEGORIES.map((cat) => (
-              <button key={cat.id}
-                onClick={() => { setSelectedCategory(cat.id); setSelectedSubcategory('All Subcategories'); }}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 whitespace-nowrap ${selectedCategory === cat.id ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900'}`}
+        {/* Category Filter - Mobile Dropdown / Desktop Buttons */}
+        <div className="w-full max-w-4xl mb-4 sm:mb-8">
+          {/* Mobile: Dropdown */}
+          <div className="sm:hidden space-y-2">
+            <div className="relative">
+              <button
+                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                className="w-full px-3 py-2 rounded-lg text-xs font-medium bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
               >
-                <span>{cat.label}</span>
-                <span className="opacity-60 text-[10px]">({notes.filter(n => n.category === cat.id).length})</span>
+                <span className="truncate">{selectedCategoryLabel}</span>
+                <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${isCategoryDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
-            ))}
+              {isCategoryDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
+                  <button
+                    onClick={() => {
+                      setSelectedCategory('all');
+                      setSelectedSubcategory('All Subcategories');
+                      setIsCategoryDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2.5 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border-b border-zinc-100 dark:border-zinc-800"
+                  >
+                    All Materials ({notes.length})
+                  </button>
+                  {CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => {
+                        setSelectedCategory(cat.id);
+                        setSelectedSubcategory('All Subcategories');
+                        setIsCategoryDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2.5 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center"
+                    >
+                      <span>{cat.label}</span>
+                      <span className="text-[10px] text-zinc-400">({notes.filter(n => n.category === cat.id).length})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Subcategory dropdown */}
+            {selectedCategory !== 'all' && activeSubcategoryList.length > 0 && (
+              <select
+                value={selectedSubcategory}
+                onChange={(e) => setSelectedSubcategory(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200"
+              >
+                <option value="All Subcategories">All Subcategories</option>
+                {activeSubcategoryList.map((sub) => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
+              </select>
+            )}
           </div>
-          {selectedCategory !== 'all' && activeSubcategoryList.length > 0 && (
-            <div className="flex flex-wrap items-center justify-center gap-1 text-[11px]">
-              {activeSubcategoryList.map((sub) => (
-                <button key={sub} onClick={() => setSelectedSubcategory(sub)}
-                  className={`px-3 py-1 rounded transition-all ${selectedSubcategory === sub ? 'text-zinc-900 dark:text-zinc-100 font-semibold bg-zinc-100 dark:bg-zinc-900' : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300'}`}
+
+          {/* Desktop: Button Layout */}
+          <div className="hidden sm:block space-y-4">
+            <div className="flex flex-wrap justify-center items-center gap-1.5 pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
+              <button
+                onClick={() => { setSelectedCategory('all'); setSelectedSubcategory('All Subcategories'); }}
+                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${selectedCategory === 'all' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900'}`}
+              >
+                All Materials ({notes.length})
+              </button>
+              {CATEGORIES.map((cat) => (
+                <button key={cat.id}
+                  onClick={() => { setSelectedCategory(cat.id); setSelectedSubcategory('All Subcategories'); }}
+                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 whitespace-nowrap ${selectedCategory === cat.id ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900'}`}
                 >
-                  {sub}
+                  <span>{cat.label}</span>
+                  <span className="opacity-60 text-[10px]">({notes.filter(n => n.category === cat.id).length})</span>
                 </button>
               ))}
             </div>
-          )}
+            {selectedCategory !== 'all' && activeSubcategoryList.length > 0 && (
+              <div className="flex flex-wrap items-center justify-center gap-1 text-[11px]">
+                {activeSubcategoryList.map((sub) => (
+                  <button key={sub} onClick={() => setSelectedSubcategory(sub)}
+                    className={`px-3 py-1 rounded transition-all ${selectedSubcategory === sub ? 'text-zinc-900 dark:text-zinc-100 font-semibold bg-zinc-100 dark:bg-zinc-900' : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300'}`}
+                  >
+                    {sub}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* Admin Console - Compact on Mobile */}
         {isAdmin && (
-          <div className="w-full max-w-5xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 text-xs">
-            <div className="text-center sm:text-left">
+          <div className="w-full max-w-5xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-3 sm:p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 mb-6 text-xs">
+            <div className="text-center sm:text-left text-[11px] sm:text-xs">
               <span className="text-[9px] font-mono uppercase tracking-wider font-semibold bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-2 py-0.5 rounded">Console</span>
-              <p className="text-zinc-500 dark:text-zinc-400 mt-1">Reviewing active student requests and platform integrity.</p>
+              <p className="text-zinc-500 dark:text-zinc-400 mt-0.5 sm:mt-1">Reviewing active student requests.</p>
             </div>
-            <div className="flex gap-1 bg-white dark:bg-zinc-900 p-1 rounded-md border border-zinc-200 dark:border-zinc-800">
+            <div className="flex gap-1 bg-white dark:bg-zinc-900 p-1 rounded-md border border-zinc-200 dark:border-zinc-800 flex-wrap sm:flex-nowrap justify-center">
               {(['all', 'approved', 'pending'] as const).map((mode) => (
                 <button key={mode} onClick={() => setAdminStatusFilter(mode)}
-                  className={`px-3 py-1 rounded text-[10px] uppercase font-medium transition-all ${adminStatusFilter === mode ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500'}`}
+                  className={`px-2.5 sm:px-3 py-1 rounded text-[9px] sm:text-[10px] uppercase font-medium transition-all whitespace-nowrap ${adminStatusFilter === mode ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500'}`}
                 >
                   {mode === 'all' && `All (${notes.length})`}
                   {mode === 'approved' && `Live (${notes.filter(n => n.isApproved).length})`}
@@ -345,6 +408,7 @@ export default function App() {
           </div>
         )}
 
+        {/* Notes Grid */}
         <div className="w-full max-w-7xl mt-2">
           {filteredNotes.length === 0 ? (
             <div className="py-16 text-center max-w-sm mx-auto space-y-2">
@@ -355,7 +419,7 @@ export default function App() {
               <p className="text-xs text-zinc-400 dark:text-zinc-500 leading-relaxed">Try adjusting your search or filter.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredNotes.map((note) => (
                 <div key={note.id} className="relative group/wrapper">
                   <NoteCard note={note} onView={handleOpenNoteDetails} currentUserId={user?.uid ?? null} onLike={handleLikeNote} />
@@ -403,9 +467,9 @@ export default function App() {
         />
       )}
 
-      <footer className="bg-white dark:bg-zinc-950 border-t border-zinc-200/60 dark:border-zinc-900 py-6 w-full mt-24 text-xs text-zinc-400">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="text-center sm:text-left">
+      <footer className="bg-white dark:bg-zinc-950 border-t border-zinc-200/60 dark:border-zinc-900 py-4 sm:py-6 w-full mt-16 sm:mt-24 text-xs text-zinc-400">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+          <div>
             <span className="font-medium text-zinc-600 dark:text-zinc-400">Sarad's Civil Help</span>
             <span className="mx-2 text-zinc-200 dark:text-zinc-800">•</span>
             <span className="font-mono text-[10px]">Cloud Infrastructure via Firebase</span>
