@@ -9,24 +9,14 @@ import NoteCard from './components/NoteCard';
 import ShareNoteModal from './components/ShareNoteModal';
 import NoteDetailsModal from './components/NoteDetailsModal';
 import AboutUsModal from './components/AboutUsModal';
-import {
-  BookOpen,
-  Database,
-  Plus,
-  Search,
-  Trash2
-} from 'lucide-react';
+import ProfileDashboard from './components/ProfileDashboard';
+import { BookOpen, Database, Plus, Search, Trash2 } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 
-const ADMIN_EMAILS = [
-  'apibhan@gmail.com',
-  'saradbhandari146@gmail.com'
-];
+const ADMIN_EMAILS = ['apibhan@gmail.com', 'saradbhandari146@gmail.com'];
 
 function stripUndefined<T extends object>(obj: T): Partial<T> {
-  return Object.fromEntries(
-    Object.entries(obj).filter(([, v]) => v !== undefined)
-  ) as Partial<T>;
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as Partial<T>;
 }
 
 function useDarkMode() {
@@ -36,25 +26,18 @@ function useDarkMode() {
     if (stored) return stored === 'dark';
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
-
   useEffect(() => {
     const root = document.documentElement;
-    if (dark) {
-      root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
+    if (dark) { root.classList.add('dark'); localStorage.setItem('theme', 'dark'); }
+    else { root.classList.remove('dark'); localStorage.setItem('theme', 'light'); }
   }, [dark]);
-
   return [dark, () => setDark(d => !d)] as const;
 }
 
 const SEED_DATA_PACKETS = [
   {
     title: 'Loksewa Civil Sub-Engineer Past Solutions',
-    description: 'A complete compile of real past papers for civil sub-engineer PSC exams. Includes 50 MCQs on structural design, estimating, and public procurement guides.',
+    description: 'A complete compile of real past papers for civil sub-engineer PSC exams.',
     category: 'loksewa' as NoteCategory,
     subcategory: 'Syllabus & Past Qs',
     content: '--- RECENT EXAM MCQS CIVIL SUB-ENGINEER ---\n\nQ1: The standard format size of A0 plotting paper in mm is?\nAns: 841 x 1189 mm\n...',
@@ -72,6 +55,7 @@ export default function App() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [adminStatusFilter, setAdminStatusFilter] = useState<'all' | 'approved' | 'pending'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,7 +85,6 @@ export default function App() {
     } else {
       let approvedMap: Record<string, Note> = {};
       let myNotesMap: Record<string, Note> = {};
-
       const merge = () => {
         const combined = { ...approvedMap, ...myNotesMap };
         const sorted = Object.values(combined).sort((a, b) => {
@@ -111,14 +94,12 @@ export default function App() {
         });
         setNotes(sorted);
       };
-
       const qApproved = query(notesRef, where('isApproved', '==', true));
       unsubscribeApproved = onSnapshot(qApproved, (snapshot) => {
         approvedMap = {};
         snapshot.docs.forEach(d => { approvedMap[d.id] = { id: d.id, ...d.data() } as Note; });
         merge();
       }, (error) => handleFirestoreError(error, OperationType.GET, 'notes/approved'));
-
       if (user?.uid) {
         const qMine = query(notesRef, where('userId', '==', user.uid));
         unsubscribeMyNotes = onSnapshot(qMine, (snapshot) => {
@@ -126,10 +107,7 @@ export default function App() {
           snapshot.docs.forEach(d => { myNotesMap[d.id] = { id: d.id, ...d.data() } as Note; });
           merge();
         }, (error) => handleFirestoreError(error, OperationType.GET, `notes/user-${user.uid}`));
-      } else {
-        myNotesMap = {};
-        merge();
-      }
+      } else { myNotesMap = {}; merge(); }
     }
     return () => { unsubscribeApproved(); unsubscribeMyNotes(); };
   }, [user, isAdmin]);
@@ -145,20 +123,15 @@ export default function App() {
 
   const handleAutoSeed = async () => {
     if (notes.length > 0) return;
-    const defaultAuthorName = user?.displayName || 'Sarad Sapkota';
-    const defaultAuthorEmail = user?.email || 'saradhelp@gmail.com';
-    const defaultUserId = user?.uid || 'system_seeder_007';
     try {
       const col = collection(db, 'notes');
       for (const item of SEED_DATA_PACKETS) {
         await addDoc(col, stripUndefined({
           ...item,
-          authorName: defaultAuthorName,
-          authorEmail: defaultAuthorEmail,
-          userId: defaultUserId,
-          likesCount: 0,
-          likes: {},
-          isApproved: true,
+          authorName: user?.displayName || 'Sarad Sapkota',
+          authorEmail: user?.email || 'saradhelp@gmail.com',
+          userId: user?.uid || 'system_seeder_007',
+          likesCount: 0, likes: {}, isApproved: true,
           tags: ['Reference Notes', 'Syllabus Guides'],
           createdAt: serverTimestamp()
         }));
@@ -167,7 +140,10 @@ export default function App() {
   };
 
   const handleLogin = async () => { try { await loginWithGoogle(); } catch (err) { console.error(err); } };
-  const handleLogout = async () => { try { await logoutUser(); setIsDetailsModalOpen(false); setSelectedNote(null); } catch (err) { console.error(err); } };
+  const handleLogout = async () => {
+    try { await logoutUser(); setIsDetailsModalOpen(false); setSelectedNote(null); setIsProfileOpen(false); }
+    catch (err) { console.error(err); }
+  };
   const handleShareClick = () => { if (!user) { handleLogin(); return; } setIsShareModalOpen(true); };
 
   const handleShareNote = async (noteData: any) => {
@@ -226,15 +202,15 @@ export default function App() {
 
   const handleDeleteComment = async (commentId: string) => {
     if (!selectedNote || !user) return;
-    try {
-      await deleteDoc(doc(db, 'notes', selectedNote.id, 'comments', commentId));
-    } catch (error) { handleFirestoreError(error, OperationType.DELETE, `notes/${selectedNote.id}/comments/${commentId}`); }
+    try { await deleteDoc(doc(db, 'notes', selectedNote.id, 'comments', commentId)); }
+    catch (error) { handleFirestoreError(error, OperationType.DELETE, `notes/${selectedNote.id}/comments/${commentId}`); }
   };
 
   const handleDeleteNote = async (noteId: string, event: React.MouseEvent) => {
     event.stopPropagation();
     if (!window.confirm('Delete this note permanently?')) return;
-    try { await deleteDoc(doc(db, 'notes', noteId)); } catch (error) { handleFirestoreError(error, OperationType.DELETE, `notes/${noteId}`); }
+    try { await deleteDoc(doc(db, 'notes', noteId)); }
+    catch (error) { handleFirestoreError(error, OperationType.DELETE, `notes/${noteId}`); }
   };
 
   const handleOpenNoteDetails = (note: Note) => { setSelectedNote(note); setIsDetailsModalOpen(true); };
@@ -273,26 +249,18 @@ export default function App() {
         dark={dark}
         onToggleDark={toggleDark}
         onAboutClick={() => setIsAboutModalOpen(true)}
+        onProfileClick={() => setIsProfileOpen(true)}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex-1 w-full flex flex-col items-center">
-        
-        {/* Centered Minimal Search Console */}
-        <div className="w-full max-w-2xl text-center pt-20 pb-12 flex flex-col items-center space-y-6">
-          
-          {/* Engine Header Branding */}
-          <div className="space-y-1">
-            <h2 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-              Sarad's Civil Help
-            </h2>
-            <p className="text-xs text-zinc-400 dark:text-zinc-500 max-w-sm mx-auto">
-              Search open warehouses for BE, NEC License, and Loksewa.
-            </p>
-          </div>
 
-          {/* Minimal Centered Google-Style Input */}
-          <div className="w-full relative group">
-            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-zinc-400 focus-within:text-zinc-900 dark:focus-within:text-zinc-100">
+        <div className="w-full max-w-2xl text-center pt-20 pb-12 flex flex-col items-center space-y-6">
+          <div className="space-y-1">
+            <h2 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Sarad's Civil Help</h2>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500 max-w-sm mx-auto">Search open warehouses for BE, NEC License, and Loksewa.</p>
+          </div>
+          <div className="w-full relative">
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-zinc-400">
               <Search className="w-4 h-4 stroke-[1.5]" />
             </div>
             <input
@@ -300,66 +268,41 @@ export default function App() {
               placeholder="Search equations, topics, chapters, or tags..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-sm pl-11 pr-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full shadow-[0_1px_6px_rgba(0,0,0,0.03)] text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:shadow-[0_2px_12px_rgba(0,0,0,0.08)] transition-all"
+              className="w-full text-sm pl-11 pr-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full shadow-[0_1px_6px_rgba(0,0,0,0.03)] text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all"
             />
           </div>
-
-          {/* Solid Flat High-Emphasis Action Bar */}
           <div className="pt-2">
-            <button
-              onClick={handleShareClick}
-              className="px-6 py-2.5 rounded-md text-xs font-medium bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 transition-colors cursor-pointer shadow-sm flex items-center gap-2"
-            >
+            <button onClick={handleShareClick} className="px-6 py-2.5 rounded-md text-xs font-medium bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 transition-colors cursor-pointer shadow-sm flex items-center gap-2">
               <Plus className="w-4 h-4 stroke-[2.5]" />
               Share Your Study Material
             </button>
           </div>
         </div>
 
-        {/* Horizontal Minimalism Tabbed Navigation */}
         <div className="w-full max-w-4xl space-y-4 mb-8">
-          <div className="flex overflow-x-auto justify-start sm:justify-center items-center gap-1.5 pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
+          {/* FIXED: Using flex-wrap instead of overflow-x-auto */}
+          <div className="flex flex-wrap justify-center items-center gap-1.5 pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
             <button
               onClick={() => { setSelectedCategory('all'); setSelectedSubcategory('All Subcategories'); }}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-                selectedCategory === 'all'
-                  ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
-                  : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900'
-              }`}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${selectedCategory === 'all' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900'}`}
             >
               All Materials ({notes.length})
             </button>
-            {CATEGORIES.map((cat) => {
-              const count = notes.filter(n => n.category === cat.id).length;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => { setSelectedCategory(cat.id); setSelectedSubcategory('All Subcategories'); }}
-                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
-                    selectedCategory === cat.id
-                      ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
-                      : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900'
-                  }`}
-                >
-                  <span>{cat.label}</span>
-                  <span className="opacity-60 text-[10px]">({count})</span>
-                </button>
-              );
-            })}
+            {CATEGORIES.map((cat) => (
+              <button key={cat.id}
+                onClick={() => { setSelectedCategory(cat.id); setSelectedSubcategory('All Subcategories'); }}
+                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 whitespace-nowrap ${selectedCategory === cat.id ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900'}`}
+              >
+                <span>{cat.label}</span>
+                <span className="opacity-60 text-[10px]">({notes.filter(n => n.category === cat.id).length})</span>
+              </button>
+            ))}
           </div>
-
-          {/* Inline Understated Subcategory Filter Strips */}
           {selectedCategory !== 'all' && activeSubcategoryList.length > 0 && (
             <div className="flex flex-wrap items-center justify-center gap-1 text-[11px]">
               {activeSubcategoryList.map((sub) => (
-                <button
-                  key={sub}
-                  onClick={() => setSelectedSubcategory(sub)}
-                  className={`px-3 py-1 rounded transition-all ${
-                    selectedSubcategory === sub
-                      ? 'text-zinc-900 dark:text-zinc-100 font-semibold bg-zinc-100 dark:bg-zinc-900'
-                      : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300'
-                  }`}
+                <button key={sub} onClick={() => setSelectedSubcategory(sub)}
+                  className={`px-3 py-1 rounded transition-all ${selectedSubcategory === sub ? 'text-zinc-900 dark:text-zinc-100 font-semibold bg-zinc-100 dark:bg-zinc-900' : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300'}`}
                 >
                   {sub}
                 </button>
@@ -368,7 +311,6 @@ export default function App() {
           )}
         </div>
 
-        {/* Admin Moderation Console Area */}
         {isAdmin && (
           <div className="w-full max-w-5xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 text-xs">
             <div className="text-center sm:text-left">
@@ -377,14 +319,8 @@ export default function App() {
             </div>
             <div className="flex gap-1 bg-white dark:bg-zinc-900 p-1 rounded-md border border-zinc-200 dark:border-zinc-800">
               {(['all', 'approved', 'pending'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setAdminStatusFilter(mode)}
-                  className={`px-3 py-1 rounded text-[10px] uppercase font-medium transition-all ${
-                    adminStatusFilter === mode
-                      ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
-                      : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500'
-                  }`}
+                <button key={mode} onClick={() => setAdminStatusFilter(mode)}
+                  className={`px-3 py-1 rounded text-[10px] uppercase font-medium transition-all ${adminStatusFilter === mode ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500'}`}
                 >
                   {mode === 'all' && `All (${notes.length})`}
                   {mode === 'approved' && `Live (${notes.filter(n => n.isApproved).length})`}
@@ -395,19 +331,14 @@ export default function App() {
           </div>
         )}
 
-        {/* Database Pack Seeder Utility */}
         {notes.length === 0 && (
           <div className="mb-6">
-            <button
-              onClick={handleAutoSeed}
-              className="text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-400 flex items-center gap-1.5 border border-dashed border-zinc-200 dark:border-zinc-800 px-3 py-1.5 rounded-md transition-colors"
-            >
+            <button onClick={handleAutoSeed} className="text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-400 flex items-center gap-1.5 border border-dashed border-zinc-200 dark:border-zinc-800 px-3 py-1.5 rounded-md transition-colors">
               <Database className="w-3.5 h-3.5" /> Initialize Sample Data Packets
             </button>
           </div>
         )}
 
-        {/* Clean Results Feed */}
         <div className="w-full max-w-7xl mt-2">
           {filteredNotes.length === 0 ? (
             <div className="py-16 text-center max-w-sm mx-auto space-y-2">
@@ -415,25 +346,16 @@ export default function App() {
                 <BookOpen className="w-4 h-4" />
               </div>
               <h4 className="font-medium text-zinc-700 dark:text-zinc-300 text-sm">No matched results.</h4>
-              <p className="text-xs text-zinc-400 dark:text-zinc-500 leading-relaxed">
-                Try structural adjustments to your current search query or filter scope.
-              </p>
+              <p className="text-xs text-zinc-400 dark:text-zinc-500 leading-relaxed">Try adjusting your search or filter.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredNotes.map((note) => (
                 <div key={note.id} className="relative group/wrapper">
-                  <NoteCard
-                    note={note}
-                    onView={handleOpenNoteDetails}
-                    currentUserId={user?.uid ?? null}
-                    onLike={handleLikeNote}
-                  />
+                  <NoteCard note={note} onView={handleOpenNoteDetails} currentUserId={user?.uid ?? null} onLike={handleLikeNote} />
                   {user && note.userId === user.uid && (
-                    <button
-                      onClick={(e) => handleDeleteNote(note.id, e)}
+                    <button onClick={(e) => handleDeleteNote(note.id, e)}
                       className="absolute bottom-3 right-3 p-1.5 text-zinc-400 hover:text-red-500 transition-all bg-white dark:bg-zinc-900 rounded-md opacity-0 group-hover/wrapper:opacity-100 border border-zinc-200 dark:border-zinc-800 cursor-pointer"
-                      title="Remove Publication"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -445,12 +367,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* Shared Modals Overlay Panels */}
-      <ShareNoteModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        onShare={handleShareNote}
-      />
+      <ShareNoteModal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} onShare={handleShareNote} />
 
       <NoteDetailsModal
         note={selectedNote}
@@ -467,12 +384,18 @@ export default function App() {
         onDeleteNote={() => selectedNote && handleAdminDeleteNote(selectedNote.id)}
       />
 
-      <AboutUsModal
-        isOpen={isAboutModalOpen}
-        onClose={() => setIsAboutModalOpen(false)}
-      />
+      <AboutUsModal isOpen={isAboutModalOpen} onClose={() => setIsAboutModalOpen(false)} />
 
-      {/* Minimal Fluid Footer */}
+      {user && (
+        <ProfileDashboard
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+          user={user}
+          notes={notes}
+          onViewNote={handleOpenNoteDetails}
+        />
+      )}
+
       <footer className="bg-white dark:bg-zinc-950 border-t border-zinc-200/60 dark:border-zinc-900 py-6 w-full mt-24 text-xs text-zinc-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="text-center sm:text-left">
