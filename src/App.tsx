@@ -424,7 +424,7 @@ export default function App() {
         {!user && noteOpenCount > 0 && (
           <div className="w-full max-w-7xl mb-4 px-4 py-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-lg text-center">
             <p className="text-xs text-amber-800 dark:text-amber-200">
-              <span className="font-semibold">{2 - noteOpenCount}</span> free preview{2 - noteOpenCount !== 1 ? 's' : ''} remaining • <button onClick={handleLogin} className="underline font-medium hover:no-underline">Sign in</button> For Free, to unlock unlimited access
+              <span className="font-semibold">{2 - noteOpenCount}</span> free preview{2 - noteOpenCount !== 1 ? 's' : ''} remaining • <button onClick={handleLogin} className="underline font-medium hover:no-underline">Sign in</button> to unlock unlimited access
             </p>
           </div>
         )}
