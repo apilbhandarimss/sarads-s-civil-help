@@ -192,22 +192,24 @@ export default function NoteDetailsModal({
                   )}
                 </div>
 
-                {/* Admin toolbar */}
+                {/* Minimalist Admin Toolbar */}
                 {isAdmin && (
-                  <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 rounded-xl flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-mono uppercase tracking-wider text-amber-800 dark:text-amber-400">Moderator</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className={`text-[10px] font-mono ${note.isApproved ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                          {note.isApproved ? 'approved' : 'pending review'}
-                        </span>
-                      </div>
+                  <div className="py-2.5 px-4 border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 rounded-xl flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-zinc-500 dark:text-zinc-400">
+                        Moderator
+                      </span>
+                      <span className="w-[1px] h-3 bg-zinc-200 dark:bg-zinc-800" />
+                      <span className={`text-xs font-mono ${note.isApproved ? 'text-zinc-600 dark:text-zinc-400' : 'text-zinc-400 italic'}`}>
+                        {note.isApproved ? 'approved' : 'pending review'}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    
+                    <div className="flex items-center gap-2 shrink-0">
                       {!note.isApproved && onApproveNote && (
                         <button
                           onClick={onApproveNote}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+                          className="bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-xs font-medium px-3 py-1.5 rounded-lg cursor-pointer transition-colors shadow-sm"
                         >
                           Approve
                         </button>
@@ -215,9 +217,9 @@ export default function NoteDetailsModal({
                       {onDeleteNote && (
                         <button
                           onClick={onDeleteNote}
-                          className="text-red-600 dark:text-red-400 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs font-medium px-3 py-1.5 rounded-lg cursor-pointer flex items-center gap-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                          className="text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-medium px-3 py-1.5 rounded-lg cursor-pointer flex items-center gap-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-900/40 transition-colors"
                         >
-                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                          <Trash2 className="w-3.5 h-3.5 stroke-[1.5]" /> Delete
                         </button>
                       )}
                     </div>
